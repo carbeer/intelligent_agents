@@ -30,27 +30,23 @@ public class RabbitsGrassSimulationSpace {
 	    	// Choose coordinates
 	    	int x = (int)(Math.random()*(garden.getSizeX()));
 	    	int y = (int)(Math.random()*(garden.getSizeY()));
-
-	    	// Get the value of the object at those coordinates
-	    	int I = getValueAt(x, y);
 	    	
-	    	// Replace the Integer object with another one with the new value
-	    	if (i != 1 && i != -1 ) {
-	    		garden.putObjectAt(x,y,new Integer(1));
+	    	//c is the number of trials before giving up 
+	    	for (int c = 0; c<3; c++) {
+	    		// Get the value of the object at those coordinates
+	    		int I = getValueAt(x, y);	    	
+	    		// Replace the Integer object with another one with the new value
+	    		if (rabbitsSpace.getObjectAt(x, y) == null && I == 0) {
+	    			garden.putObjectAt(x,y,new Integer(1));
+	    			break;
+	    		}
 	    	}
 	    }
 	}
 	public int getValueAt(int x, int y){
-	    int i;
-	    if(garden.getObjectAt(x,y)!= null){
-	    	i = ((Integer)garden.getObjectAt(x,y)).intValue();
-	    }
-	    else if(rabbitsSpace.getObjectAt(x, y) != null) {
-	    	i = -1;
-	    }
-	    
-	    else{
-	    	i = 0;
+	    int i=0;	
+	    if(garden.getObjectAt(x,y) != null){
+	    	i = ((Integer)garden.getObjectAt(x, y)).intValue();
 	    }
 	    return i;
 	}
@@ -66,7 +62,7 @@ public class RabbitsGrassSimulationSpace {
 	//Rabbits can be placed in a cell with grass
 	public boolean isCellOccupied (int x, int y) {
 		boolean retVal = false;
-		if (garden.getObjectAt(x, y) != null && rabbitsSpace.getObjectAt(x,y) != null) retVal = true;
+		if (rabbitsSpace.getObjectAt(x,y) != null) retVal = true;
 		return retVal;
 	}
 	
@@ -83,6 +79,7 @@ public class RabbitsGrassSimulationSpace {
 				rabbitsSpace.putObjectAt(x, y, rabbit);
 				rabbit.setXY(x, y);
 				rabbit.setGrassSpace(this);
+				rabbit.tryToEat();
 				retVal = true;
 			}
 			count++;
@@ -98,8 +95,7 @@ public class RabbitsGrassSimulationSpace {
 		boolean retVal = false;
 		if (!isCellOccupied(newX, newY)) {
 			RabbitsGrassSimulationAgent rsa = (RabbitsGrassSimulationAgent)rabbitsSpace.getObjectAt(x, y);
-			removeRabbitsAt(x,y);
-			
+			removeRabbitsAt(x,y);		
 			rsa.setXY(newX, newY);
 			rabbitsSpace.putObjectAt(newX,  newY, rsa);
 			retVal = true;

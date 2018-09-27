@@ -206,7 +206,8 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 	private void addNewRabbits () {
 		RabbitsGrassSimulationAgent a = new RabbitsGrassSimulationAgent ();
 		rabbitsList.add(a);
-		grassSpace.addAgent(a);
+		grassSpace.addAgent(a);		
+		
 	}
 	
 	private int cleanDeadRabbits(){
