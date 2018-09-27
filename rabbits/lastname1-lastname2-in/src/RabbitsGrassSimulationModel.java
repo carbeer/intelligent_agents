@@ -145,13 +145,12 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 				grassSpace.spreadGrass(grassRate);
 				SimUtilities.shuffle(rabbitsList);
 				for (int i=0; i < rabbitsList.size(); i++) {
-					RabbitsGrassSimulationAgent rsa = (RabbitsGrassSimulationAgent)rabbitsList.get(i);
-					/*
-					if (rsa.getEnergy() > BIRTHTHRESHOLD) {
-						addNewRabbits();
-						rsa.giveBirth((int)(BIRTHTHRESHOLD * 2 / 3) );
+					RabbitsGrassSimulationAgent rsa = (RabbitsGrassSimulationAgent)rabbitsList.get(i);					
+					if (rsa.getEnergy() > BIRTHTHRESHOLD) {						
+						addNewRabbits();						
+						rsa.giveBirth((int)(BIRTHTHRESHOLD * 2 / 3) );						
 					}
-					*/
+					
 					rsa.step();
 				}
 				int deadRAbbits = cleanDeadRabbits();

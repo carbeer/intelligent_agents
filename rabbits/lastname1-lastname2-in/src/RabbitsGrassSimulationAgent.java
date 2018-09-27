@@ -14,7 +14,7 @@ import uchicago.src.sim.space.Object2DGrid;
 public class RabbitsGrassSimulationAgent implements Drawable {
 	
 	private static final int ENERGYEARNT = 5;
-	private static final int INITENERGY = 18;
+	private static final int INITENERGY = 10;
 	
 	private int energy;
 	private int x;
