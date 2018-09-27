@@ -63,9 +63,10 @@ public class RabbitsGrassSimulationSpace {
 		return rabbitsSpace;
 	}
 	
+	//Rabbits can be placed in a cell with grass
 	public boolean isCellOccupied (int x, int y) {
 		boolean retVal = false;
-		if (rabbitsSpace.getObjectAt(x,y) != null) retVal = true;
+		if (garden.getObjectAt(x, y) != null && rabbitsSpace.getObjectAt(x,y) != null) retVal = true;
 		return retVal;
 	}
 	
@@ -113,6 +114,26 @@ public class RabbitsGrassSimulationSpace {
 		int energy = getValueAt(x, y);
 		garden.putObjectAt(x, y, new Integer(0));
 		return energy;
+	}
+	
+	public int getTotalGrass() {
+		int totalGrass = 0;
+		for (int i =0 ; i < rabbitsSpace.getSizeX();i++) {
+			for(int j=0; j< rabbitsSpace.getSizeY(); j++) {
+				if (getValueAt(i,j) == 1) totalGrass++;
+			}
+		}
+		return totalGrass;
+	}
+	
+	public int getTotalRabbits() {
+		int totalRabbits = 0;
+		for (int i =0 ; i < rabbitsSpace.getSizeX();i++) {
+			for(int j=0; j< rabbitsSpace.getSizeY(); j++) {
+				if (rabbitsSpace.getObjectAt(i, j) != null) totalRabbits++;
+			}
+		}
+		return totalRabbits;
 	}
 	
 }
