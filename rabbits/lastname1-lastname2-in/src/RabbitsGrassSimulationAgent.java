@@ -14,7 +14,7 @@ import uchicago.src.sim.space.Object2DGrid;
 public class RabbitsGrassSimulationAgent implements Drawable {
 	
 	private static final int ENERGYEARNT = 5;
-	private static final int INITENERGY = 10;
+	private static final int INITENERGY = 18;
 	
 	private int energy;
 	private int x;
@@ -55,11 +55,10 @@ public class RabbitsGrassSimulationAgent implements Drawable {
 	}
 	
 	public void step() {
-		
 		setDirection();
 		int newX = x;
 		int newY = y;
-		System.out.println(direction);
+
 		switch (direction) {
 			case 0:
 				newY +=1;
@@ -103,6 +102,10 @@ public class RabbitsGrassSimulationAgent implements Drawable {
 	
 	public int getEnergy() {
 		return energy;
+	}
+	
+	public void giveBirth(int e) {
+		energy -= e;
 	}
 	
 	public void report() {

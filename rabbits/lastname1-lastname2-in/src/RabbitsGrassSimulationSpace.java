@@ -99,9 +99,6 @@ public class RabbitsGrassSimulationSpace {
 		if (!isCellOccupied(newX, newY)) {
 			RabbitsGrassSimulationAgent rsa = (RabbitsGrassSimulationAgent)rabbitsSpace.getObjectAt(x, y);
 			removeRabbitsAt(x,y);
-			System.out.println("NewwX and NewY: " + newX + " " + newY );
-			System.out.println("NewwX and NewY: " + x + " " + y ) ;
-			
 			
 			rsa.setXY(newX, newY);
 			rabbitsSpace.putObjectAt(newX,  newY, rsa);

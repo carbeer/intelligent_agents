@@ -32,7 +32,7 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 	private static final int GRIDXSIZE = 20;
 	private static final int GRIDYSIZE = 20;
 	private static final int GRASSRATE = 1;
-	private static final int BIRTHTHRESHOLD = 5;
+	private static final int BIRTHTHRESHOLD = 15;
 
 	private Schedule schedule;
 	private RabbitsGrassSimulationSpace grassSpace;
@@ -146,6 +146,12 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 				SimUtilities.shuffle(rabbitsList);
 				for (int i=0; i < rabbitsList.size(); i++) {
 					RabbitsGrassSimulationAgent rsa = (RabbitsGrassSimulationAgent)rabbitsList.get(i);
+					/*
+					if (rsa.getEnergy() > BIRTHTHRESHOLD) {
+						addNewRabbits();
+						rsa.giveBirth((int)(BIRTHTHRESHOLD * 2 / 3) );
+					}
+					*/
 					rsa.step();
 				}
 				int deadRAbbits = cleanDeadRabbits();
@@ -155,13 +161,6 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 		
 		schedule.scheduleActionBeginning(0, new SimulationStep());
 		
-		class SimulationCountLiving extends BasicAction {
-			public void execute(){
-				countLivingRabbits();
-		    }
-		}
-
-		schedule.scheduleActionAtInterval(10, new SimulationCountLiving());
 		
 		class updateGrassInSpace extends BasicAction{
 			public void execute(){
@@ -178,15 +177,7 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 		schedule.scheduleActionAtInterval(10, new updateRabbitsInSpace());
 	}
 	
-	private int countLivingRabbits () {
-		int l = 0;
-		for (int i=0; i < rabbitsList.size(); i++) {
-			RabbitsGrassSimulationAgent rsa = (RabbitsGrassSimulationAgent)rabbitsList.get(i);
-			if(rsa.getEnergy() > 0) l++;
-		}
-		System.out.println("Number of living rabbits is: " + l);
-		return l;
-	}
+
 	
 	public void buildDisplay() {
 		
