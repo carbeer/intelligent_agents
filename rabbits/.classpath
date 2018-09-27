@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="src" path="lastname1-lastname2-in/src"/>
+	<classpathentry kind="lib" path="lib/repast.jar"/>
+	<classpathentry kind="lib" path="lib/colt.jar"/>
+	<classpathentry kind="lib" path="lib/plot.jar"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>

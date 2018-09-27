@@ -1,6 +1,9 @@
 import java.awt.Color;
 import java.util.ArrayList;
 
+import uchicago.src.sim.analysis.DataSource;
+import uchicago.src.sim.analysis.OpenSequenceGraph;
+import uchicago.src.sim.analysis.Sequence;
 import uchicago.src.sim.engine.BasicAction;
 import uchicago.src.sim.engine.Schedule;
 import uchicago.src.sim.engine.SimModelImpl;
@@ -35,6 +38,8 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 	private RabbitsGrassSimulationSpace grassSpace;
 	private DisplaySurface displaySurf;
 	private ArrayList rabbitsList;
+	private OpenSequenceGraph amountGrassInSpace;
+	private OpenSequenceGraph amountRabbitsInSpace;
 	
 	private int numRabbits = NUMRABBITS;
 	private int gridXSize = GRIDXSIZE;
@@ -51,6 +56,59 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 	    init.loadModel(model, "", false);
 			
 	}
+	
+	class grassInSpace implements DataSource, Sequence {
+		public Object execute() {
+			return new Double(getSValue());
+		}
+		public double getSValue() {
+			return (double)grassSpace.getTotalGrass();
+		}
+	}
+	
+	class rabbitsInSpace implements DataSource, Sequence {
+		public Object execute() {
+			return new Double(getSValue());
+		}
+		public double getSValue() {
+			return (double)grassSpace.getTotalRabbits();
+		}
+	}
+	
+
+	public void setup() {
+		System.out.println("Running setup");
+		grassSpace = null;
+		rabbitsList = new ArrayList();
+		schedule = new Schedule(1);
+		
+		//Tear Down displays
+		if (displaySurf != null) {
+			displaySurf.dispose();
+		}
+		displaySurf = null;
+		
+		if (amountGrassInSpace != null){
+			amountGrassInSpace.dispose();
+		}
+		amountGrassInSpace = null;
+		
+		if (amountRabbitsInSpace != null){
+			amountRabbitsInSpace.dispose();
+		}
+		amountRabbitsInSpace = null;
+		
+		//create display
+		displaySurf = new DisplaySurface(this, "Rabbit Grass Simulation 1");
+		amountGrassInSpace = new OpenSequenceGraph("Amount of Grass in Space", this);
+		amountRabbitsInSpace = new OpenSequenceGraph("Amounts of Rabbits in Space", this);
+		
+		//register display
+        registerDisplaySurface("Rabbit Grass Simulation 1", displaySurf);
+        this.registerMediaProducer("Plot0", amountGrassInSpace);
+        this.registerMediaProducer("Plot1", amountRabbitsInSpace);
+
+	}
 
 	public void begin() {
 		System.out.println("Running begin");
@@ -59,37 +117,10 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 	    buildDisplay();
 
 	    displaySurf.display();
+	    amountGrassInSpace.display();
+	    amountRabbitsInSpace.display();
 
 		
-	}
-
-	public String[] getInitParam() {
-		String [] initParams = { "numRabbits", "gridXSize", "gridYSize", "grassRate", "birthThreshold" };
-		return initParams;
-	}
-
-	public String getName() {
-		return "Rabbit";
-	}
-
-	public Schedule getSchedule() {
-		return schedule;
-	}
-
-	public void setup() {
-		System.out.println("Running setup");
-		grassSpace = null;
-		rabbitsList = new ArrayList();
-		schedule = new Schedule(1);
-		
-		if (displaySurf != null){
-			displaySurf.dispose();
-		}
-		displaySurf = null;
-
-		displaySurf = new DisplaySurface(this, "Rabbit Grass Simulation 1");
-        registerDisplaySurface("Rabbit Grass Simulation 1", displaySurf);
-
 	}
 	
 	public void buildModel() {
@@ -131,6 +162,20 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 		}
 
 		schedule.scheduleActionAtInterval(10, new SimulationCountLiving());
+		
+		class updateGrassInSpace extends BasicAction{
+			public void execute(){
+				amountGrassInSpace.step();
+			}
+		}
+		schedule.scheduleActionAtInterval(10, new updateGrassInSpace());
+		
+		class updateRabbitsInSpace extends BasicAction{
+			public void execute(){
+				amountRabbitsInSpace.step();
+			}
+		}
+		schedule.scheduleActionAtInterval(10, new updateRabbitsInSpace());
 	}
 	
 	private int countLivingRabbits () {
@@ -159,10 +204,12 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 	    Object2DDisplay displayRabbits = new Object2DDisplay(grassSpace.getCurrentRabbitsSpace());
 	    displayRabbits.setObjectList(rabbitsList);
 	    
-
-
-	    displaySurf.addDisplayable(displayGrass, "Garden");
-	    displaySurf.addDisplayable(displayRabbits, "Rabbits");
+	    
+	    displaySurf.addDisplayableProbeable(displayGrass, "Garden");
+	    displaySurf.addDisplayableProbeable(displayRabbits, "Rabbits");
+	    
+	    amountGrassInSpace.addSequence("Grass in Space", new grassInSpace ());
+	    amountRabbitsInSpace.addSequence("Rabbits in Space", new rabbitsInSpace());
 		
 	}
 	
@@ -183,7 +230,20 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 	      }
 	    }
 	    return count;
-	  }
+	}
+	
+	public String[] getInitParam() {
+		String [] initParams = { "numRabbits", "gridXSize", "gridYSize", "grassRate", "birthThreshold" };
+		return initParams;
+	}
+
+	public String getName() {
+		return "Rabbit";
+	}
+
+	public Schedule getSchedule() {
+		return schedule;
+	}
 		
 	public int getNumRabbits(){
 	    return numRabbits;
