@@ -7,7 +7,6 @@ import uchicago.src.sim.space.Object2DGrid;
 
 /**
  * Class that implements the simulation agent for the rabbits grass simulation.
-
  * @author
  */
 
@@ -36,7 +35,6 @@ public class RabbitsGrassSimulationAgent implements Drawable {
 
 	public void draw(SimGraphics G) {
 		G.drawFastRoundRect(Color.white);
-		
 	}
 	
 	public void setXY (int newX, int newY) {
@@ -47,10 +45,9 @@ public class RabbitsGrassSimulationAgent implements Drawable {
 	public void setGrassSpace(RabbitsGrassSimulationSpace rsa) {
 		grassSpace = rsa;
 	}
-	
+
+	// Random generator for rabbit movements (0, 1, 2 or 3)
 	private void setDirection () {
-		direction = 0;
-		//we let agents not to move 
 		direction = (int)Math.floor(Math.random() * 4);
 	}
 	
@@ -59,6 +56,7 @@ public class RabbitsGrassSimulationAgent implements Drawable {
 		int newX = x;
 		int newY = y;
 
+		// Map direction value to coordinates
 		switch (direction) {
 			case 0:
 				newY +=1;
@@ -76,16 +74,21 @@ public class RabbitsGrassSimulationAgent implements Drawable {
 				break;					
 		}
 		Object2DGrid grid = grassSpace.getCurrentGrassSpace();
+
+		// torus world
 		newX = (newX + grid.getSizeX()) % grid.getSizeX();
 		newY = (newY + grid.getSizeY()) % grid.getSizeY();
+
+		// Move the rabbit - if successful, the rabbit tries to eat grass afterwards
 		if (tryMove(newX, newY)) {
 			tryToEat();
 		}
+		// TODO: What is this?
 		else {
 			setDirection();
 		}
+		// Decrement energy level of the rabbit, no matter whether it moved or not
 		energy--;
-		
 	}
 
 	public int getX() {
@@ -103,19 +106,23 @@ public class RabbitsGrassSimulationAgent implements Drawable {
 	public int getEnergy() {
 		return energy;
 	}
-	
+
+	// Decrease remaining energy level if a rabbit gives birth
 	public void giveBirth(int e) {
 		energy -= e;
 	}
-	
+
+	// Logger
 	public void report() {
 		//System.out.println( getID() + " at " + x + ", " + y + " has " + getEnergy() + " energy. ");
 	}
-	
+
+	// Try to move the rabbit. Passes over a boolean as return value that indicates, whether the movement was successful or not.
 	private boolean tryMove (int newX, int newY) {
 		return grassSpace.moveRabbitsAt(x, y, newX, newY );
 	}
-	
+
+	// Rabbit tries to eat grass. Increase energy level if applicable
 	public void tryToEat() {
 		energy += grassSpace.takeGrassAt(x, y) * ENERGYEARNT;
 	}
