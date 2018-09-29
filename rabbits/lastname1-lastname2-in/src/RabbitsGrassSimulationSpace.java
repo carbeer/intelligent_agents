@@ -4,56 +4,66 @@
  */
 
 import uchicago.src.sim.space.Object2DGrid;
+import java.util.ArrayList;
 
 public class RabbitsGrassSimulationSpace {
 
 	// Grid of Integers. 0 for cells without grass, 1 for cells with grass
 	private Object2DGrid garden;
-	// TODO
+	
+	//ArrayList to keep track of empty cells to put grass on, (performance and consistency) 
+	private ArrayList<Pair> emptyGrassCells;
+
+	
+	//Grid of Objects (Rabbits) or null pointers.
 	private Object2DGrid rabbitsSpace;
 	
 	public RabbitsGrassSimulationSpace (int xSize, int ySize) {
 		
 		garden = new Object2DGrid(xSize, ySize);
 		rabbitsSpace = new Object2DGrid(xSize, ySize);
+		
+		//Initialization of empty cells list
+	    emptyGrassCells = new ArrayList<Pair> ();
 
 		// Initialization of a garden without grass
 		for(int i = 0; i < xSize; i++){
 			for (int j = 0; j < ySize; j++){
 		    garden.putObjectAt(i,j,new Integer(0));
+		    emptyGrassCells.add(new Pair(i, j));
 		    }
 		}
+		
+		
+		
 	}
 
 	/**
 	 * Randomly spread grass in the garden.
 	 * New grass grows only on empty cells (neither rabbits nor grass).
-	 * Retries 2 times.
+	 * ArrayList with the empty cells to keep track of empty positions (and randomly choose among them)
 	 * @param grass Number of new grass fields per step
 	 */
-	public void spreadGrass(int grass) {
-
-	    for(int i = 0; i < grass; i++){
-
-	    	// Choose coordinates
-	    	int x = (int)(Math.random()*(garden.getSizeX()));
-	    	int y = (int)(Math.random()*(garden.getSizeY()));
-	    	
-	    	// c is the number of trials before giving up
-	    	for (int c = 0; c<3; c++) {
-
-	    		// Get the value of the object at those coordinates
-	    		int I = getGrassValueAt(x, y);
-
-	    		// Ensure that the cell is empty, i.e. that there is no rabbit or grass
-	    		if (rabbitsSpace.getObjectAt(x, y) == null && I == 0) {
-
-	    			// Grow grass at the cell by setting the value to 1
-	    			garden.putObjectAt(x,y,new Integer(1));
-	    			break;
-	    		}
-	    	}
-	    }
+	
+	public boolean spreadGrass (int grass) {
+		
+		int idx =0;
+		
+		ArrayList<Pair> newEmptyGrassCells = new ArrayList<Pair>();
+		for (int i=0; i<garden.getSizeX(); i++) {
+			for (int j=0; j< garden.getSizeY(); j++) {
+				if (garden.getValueAt(i, j) == 0 && rabbitsSpace.getObjectAt(i,j) == null) newEmptyGrassCells.add(new Pair(i,j));
+			}
+		}
+		emptyGrassCells = newEmptyGrassCells;
+		if (emptyGrassCells.size() == 0) return false;
+		//Choose the cells
+		for (int i =0; i< grass; i++) {
+			idx = (int)(Math.random() * emptyGrassCells.size());
+			garden.putObjectAt(((Pair)(emptyGrassCells.get(idx))).getX(), ((Pair)(emptyGrassCells.get(idx))).getY(), new Integer(1));
+		}
+		return true;
+		
 	}
 
 	/**
@@ -93,7 +103,7 @@ public class RabbitsGrassSimulationSpace {
 	public boolean addAgent(RabbitsGrassSimulationAgent rabbit) {
 		boolean retVal = false;
 		int count = 0;
-		// TODO: Is this the maximum number of retries?
+		//Maximum number of retries
 		int countLimit = 10 * garden.getSizeX() * garden.getSizeY();
 		
 		while ((retVal == false) && (count < countLimit)) {
@@ -173,6 +183,25 @@ public class RabbitsGrassSimulationSpace {
 			}
 		}
 		return totalRabbits;
+	}
+	
+	
+	//Customized class to store the indexes of empty cells
+	private class Pair{
+		private int x;
+		private int y;
+		
+		public Pair(int i, int j) {
+			x = i;
+			y = j;
+		}
+		
+		public int getX () {
+			return x;
+		}
+		public int getY() {
+			return y;
+		}
 	}
 	
 }

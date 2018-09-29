@@ -151,16 +151,23 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 			public void execute() {
 
 				// 1.) Grow grass
-				grassSpace.spreadGrass(grassRate);
+				if (!grassSpace.spreadGrass(grassRate)) {
+					System.out.println("GRID FULL OF GRASS !!"); 
+				}
 				SimUtilities.shuffle(rabbitsList);
 
 				for (int i=0; i < rabbitsList.size(); i++) {
-					RabbitsGrassSimulationAgent rsa = (RabbitsGrassSimulationAgent)rabbitsList.get(i);
+				    RabbitsGrassSimulationAgent rsa = (RabbitsGrassSimulationAgent)rabbitsList.get(i);
 
 					// 2.) If applicable, bear new rabbits
 					if (rsa.getEnergy() > BIRTHTHRESHOLD) {
-						addNewRabbits();
-						rsa.giveBirth((int)(BIRTHTHRESHOLD * 2 / 3) );
+						//See whether new rabbit won't be placed in the space 
+						if( addNewRabbits()) {
+							rsa.giveBirth((int)(BIRTHTHRESHOLD * 2 / 3) );
+						}
+						else {
+							System.out.println("Rabbit not placed!!");
+						}
 					}
 					// 3.) Move rabbits
 					rsa.step();
@@ -215,11 +222,14 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 	}
 
 	// Generates new RabbitGrassSimulationAgent and places it onto the grassSpace and the rabbitsList.
-	private void addNewRabbits () {
+	private boolean addNewRabbits () {
 		RabbitsGrassSimulationAgent a = new RabbitsGrassSimulationAgent ();
-		rabbitsList.add(a);
-		grassSpace.addAgent(a);
-
+		
+		if (grassSpace.addAgent(a)) {
+			rabbitsList.add(a);
+			return true;
+		}
+		return false;
 	}
 
 	// Identify rabbits without energy and remove them.

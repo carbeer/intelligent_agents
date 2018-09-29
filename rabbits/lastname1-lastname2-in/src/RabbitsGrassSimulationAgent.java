@@ -12,7 +12,7 @@ import uchicago.src.sim.space.Object2DGrid;
 
 public class RabbitsGrassSimulationAgent implements Drawable {
 	
-	private static final int ENERGYEARNT = 5;
+	private static final int ENERGYEARNT = 3;
 	private static final int INITENERGY = 10;
 	
 	private int energy;
@@ -83,10 +83,7 @@ public class RabbitsGrassSimulationAgent implements Drawable {
 		if (tryMove(newX, newY)) {
 			tryToEat();
 		}
-		// TODO: What is this?
-		else {
-			setDirection();
-		}
+		
 		// Decrement energy level of the rabbit, no matter whether it moved or not
 		energy--;
 	}
