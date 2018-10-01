@@ -59,7 +59,7 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 	
 	class grassInSpace implements DataSource, Sequence {
 		public Object execute() {
-			return new Double(getSValue());
+			return getSValue();
 		}
 		public double getSValue() {
 			return (double)grassSpace.getTotalGrass();
@@ -68,13 +68,12 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 	
 	class rabbitsInSpace implements DataSource, Sequence {
 		public Object execute() {
-			return new Double(getSValue());
+			return getSValue();
 		}
 		public double getSValue() {
 			return (double)grassSpace.getTotalRabbits();
 		}
 	}
-	
 
 	public void setup() {
 		System.out.println("Running setup");
@@ -98,12 +97,12 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 		}
 		amountRabbitsInSpace = null;
 
-		//create display
+		// Create display
 		displaySurf = new DisplaySurface(this, "Rabbit Grass Simulation 1");
 		amountGrassInSpace = new OpenSequenceGraph("Amount of Grass in Space", this);
 		amountRabbitsInSpace = new OpenSequenceGraph("Amounts of Rabbits in Space", this);
 
-		//register display
+		// Register display
         registerDisplaySurface("Rabbit Grass Simulation 1", displaySurf);
         this.registerMediaProducer("Plot0", amountGrassInSpace);
         this.registerMediaProducer("Plot1", amountRabbitsInSpace);
@@ -119,22 +118,17 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 	    displaySurf.display();
 	    amountGrassInSpace.display();
 	    amountRabbitsInSpace.display();
-
-
 	}
 	
 	public void buildModel() {
 		System.out.println("Running BuildModel");
 
 	    grassSpace = new RabbitsGrassSimulationSpace (gridXSize, gridYSize);
-	    // TODO: Can be removed as well?
-		// grassSpace.spreadGrass(grassRate);
-
 	    for (int i = 0; i < numRabbits; i++) {
 	    	addNewRabbits();
 	    }
 
-	    // TODO: Not needed anymore, only for reporting?
+	    // Only for reporting purposes
 	    for (int i = 0; i < rabbitsList.size(); i++) {
 	    	RabbitsGrassSimulationAgent ra = (RabbitsGrassSimulationAgent)rabbitsList.get(i);
 	    	ra.report();
@@ -196,8 +190,6 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 		}
 		schedule.scheduleActionAtInterval(10, new updateRabbitsInSpace());
 	}
-	
-
 
 	public void buildDisplay() {
 
@@ -218,7 +210,6 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 
 	    amountGrassInSpace.addSequence("Grass in Space", new grassInSpace ());
 	    amountRabbitsInSpace.addSequence("Rabbits in Space", new rabbitsInSpace());
-
 	}
 
 	// Generates new RabbitGrassSimulationAgent and places it onto the grassSpace and the rabbitsList.
@@ -267,6 +258,7 @@ public class RabbitsGrassSimulationModel extends SimModelImpl {
 	public void setNumRabbits(int n){
 		numRabbits = n;
 	}
+
 	public int getGridXSize(){
 		return gridXSize;
 	}
