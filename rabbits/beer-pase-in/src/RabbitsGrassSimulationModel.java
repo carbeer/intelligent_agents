@@ -28,10 +28,10 @@ import uchicago.src.sim.util.SimUtilities;
 public class RabbitsGrassSimulationModel extends SimModelImpl {	
 	
 	// Default values
-	private static final int NUMRABBITS = 50;
+	private static final int NUMRABBITS = 30;
 	private static final int GRIDXSIZE = 20;
 	private static final int GRIDYSIZE = 20;
-	private static final int GRASSRATE = 1;
+	private static final int GRASSRATE = 10;
 	private static final int BIRTHTHRESHOLD = 15;
 
 	private Schedule schedule;
