@@ -37,7 +37,7 @@ public class ReactiveTemplate implements ReactiveBehavior {
 	@Override
 	public void setup(Topology topology, TaskDistribution td, Agent agent) {
 		
-		eps = 0.0001;
+		eps = 0.00001;
 		numCities = topology.size();
 		citiesIndex = new City[numCities];
 		int index = 0;
@@ -50,7 +50,7 @@ public class ReactiveTemplate implements ReactiveBehavior {
 		// Reads the discount factor from the agents.xml file.
 		// If the property is not present it defaults to 0.95
 		Double discount = agent.readProperty("discount-factor", Double.class,
-						0.95);
+						0.85);
 		
 		this.random = new Random();
 		this.pPickup = discount;
@@ -63,17 +63,20 @@ public class ReactiveTemplate implements ReactiveBehavior {
 		createRewarDistributionTable(td, topology);
 		createTransitionsRewardsTable(topology, td, cost);
 		
+		for (Key k : transitionsTable.keySet())
+		{
+			System.out.println("Stato " + k.fromState.x.id + " " + k.fromState.y.id + " Azione " + k.action + " a Stato " + " Probab " + transitionsTable.get(k));
+		}
+		//System.out.println(V.size());
+		//System.out.println(best.size());
+		//System.out.println(Q.size());
+		System.out.println(transitionsTable.size());
+		
 		
 		//Compute optimal policy
-		computeOptimalPolicy(discount.shortValue());
+		computeOptimalPolicy(0.95);
 		
-		for (KeyReward t : transitionsRewardTable.keySet()) {
-			System.out.println(t.fromState.x.id + " " + t.fromState.y.id + " " + t.action);
-		}
 		
-		System.out.println(V.size());
-		System.out.println(best.size());
-		System.out.println(Q.size());
 		
 		
 	}
@@ -99,20 +102,6 @@ public class ReactiveTemplate implements ReactiveBehavior {
 		else { 
 			action = new Move(citiesIndex[best.get(currentState)]);				
 		}
-		
-		/*
-		if (availableTask == null || random.nextDouble() > pPickup) {
-			City currentCity = vehicle.getCurrentCity();
-			action = new Move(currentCity.randomNeighbor(random));
-		} else {
-			action = new Pickup(availableTask);
-		}
-		
-		if (numActions >= 1) {
-			System.out.println("The total profit after "+numActions+" actions is "+myAgent.getTotalProfit()+" (average profit: "+(myAgent.getTotalProfit() / (double)numActions)+")");
-		}
-		numActions++;
-		*/
 		return action;
 	}
 	
@@ -141,11 +130,8 @@ public class ReactiveTemplate implements ReactiveBehavior {
 							if( fState.x.hasNeighbor(tState.x)) transitionsTable.put(new Key(fState,  tx.id, tState), new Double(td.probability(tx, ty)));
 							
 						}	
-						if(fState.x.hasNeighbor(tx)) transitionsRewardTable.put(new  KeyReward(fState, tx.id), new Double(-(cost * fState.x.distanceTo(fState.y))));
-					}
-					
-					
-					
+						if(fState.x.hasNeighbor(tx)) transitionsRewardTable.put(new  KeyReward(fState, tx.id), new Double(-(cost * fState.x.distanceTo(tx))));
+					}				
 				}
 				//Task found
 				//If a tupla (s,a,s') is not in the hashmap, its transition prob. is 0 
@@ -154,11 +140,16 @@ public class ReactiveTemplate implements ReactiveBehavior {
 						for (City ty : topology) {
 							State tState = new State(tx,  ty);
 							//Action numCities (value of) means pick up and deliver
-							transitionsTable.put(new Key(fState, numCities, tState), new Double(td.probability(tx, ty)));
+							if (tx.id == fState.y.id) transitionsTable.put(new Key(fState, numCities, tState), new Double(td.probability(tx, ty)));
+							if(fState.x.hasNeighbor(tState.x)) transitionsTable.put(new Key(fState, tx.id, tState), new Double(td.probability(tx, ty)));
+							
 							
 						}
+						if (tx.id == fState.y.id) transitionsRewardTable.put(new  KeyReward(fState, numCities), new Double((td.reward(fState.x, fState.y) -(fState.x.distanceTo(fState.y)*cost)) ));
+						if(fState.x.hasNeighbor(tx)) transitionsRewardTable.put(new  KeyReward(fState, tx.id), new Double(-(fState.x.distanceTo(tx)*cost)));
 					}
-					transitionsRewardTable.put(new  KeyReward(fState, numCities), new Double(td.reward(fState.x, fState.y) -(fState.x.distanceTo(fState.y)*cost)));
+					
+					
 				
 				}
 				
@@ -208,9 +199,9 @@ public class ReactiveTemplate implements ReactiveBehavior {
 		
 		//initialize V and Q tables
 		for (KeyReward k : transitionsRewardTable.keySet()) {
-			V.put(k.fromState, new Double(-10000));
-			Vp.put(k.fromState, new Double(-10000));
-			Q.put(k, new Double(transitionsRewardTable.get(k)));
+			V.put(k.fromState, new Double(1));
+			Vp.put(k.fromState, new Double(1));
+			Q.put(k, new Double(0));
 		}
 		
 		//Compute optimal value and policy
@@ -218,52 +209,43 @@ public class ReactiveTemplate implements ReactiveBehavior {
 		int h=0;
 		double tmp = 0;
 		while (diff > eps){
-			for (State s : V.keySet()) {
-				Vp.replace(s, new Double(V.get(s).shortValue()));
+			for (State si : V.keySet()) {
+				Vp.replace(si, new Double(V.get(si)));
 			}
 			for (State s : V.keySet()) {
+				
 				for (int i=0; i<=numCities; i++) {
 					KeyReward kw = new KeyReward(s,i);
 					if (transitionsRewardTable.get(kw) != null) {
-						//Q.replace(kw, new Double(transitionsRewardTable.get(kw).shortValue()));
-						tmp = transitionsRewardTable.get(kw);
+						tmp = transitionsRewardTable.get(kw).doubleValue();
 					}
 				
-					for (Key k : transitionsTable.keySet()) {									
-						
-						if (k.fromState.equals(s) && k.action == i) {
-						
+					for (Key k : transitionsTable.keySet()) {															
+						if (k.fromState.equals(s) && k.action == i) {						
 							if(Q.get(kw) != null) {
-								
-								//tmp = Q.get(kw).shortValue();
-								//Q.replace(kw, new Double(tmp + discount * transitionsTable.get(k) * V.get(s)));
-								tmp += discount * transitionsTable.get(k) * V.get(s);
-							}
-							
+								tmp = tmp + ( discount * transitionsTable.get(k) * V.get(k.toState));
+							}							
 						}
 					}
 					Q.replace(kw, new Double(tmp));
 				}
-				//find max and replace 
-				double max = -10000;
-				for (KeyReward kw : Q.keySet()) {					
-					if (kw.fromState.equals(s) && Q.get(kw) > max) {
-						max = Q.get(kw).shortValue();
-						V.replace(s, new Double( max));
-						best.put(s, new Integer(kw.action));
+				double max = -100000;
+				for (KeyReward kr : Q.keySet()) {					
+					if (kr.fromState.equals(s) && Q.get(kr) > max) {
+						max = Q.get(kr);
+						best.put(s, new Integer(kr.action));
+						V.replace(s, new Double (max));
 					}
+					
 				}
-				diff = 0;
-				for (State ss : V.keySet()) {
-					diff += Math.abs(V.get(ss) - Vp.get(ss)) ;
-				}
-				
-			}
-			
-			
+			}	
 			
 			System.out.println(diff);
 			h++;
+			diff = 0;
+			for (State ss : V.keySet()) {
+				if(Math.abs(V.get(ss) - Vp.get(ss)) > diff) diff =  Math.abs(V.get(ss) - Vp.get(ss)) ;					
+			}				
 		}
 		System.out.println(h);
 	}
