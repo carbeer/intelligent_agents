@@ -16,10 +16,7 @@ import logist.topology.Topology.City;
 
 public class ReactiveTemplate implements ReactiveBehavior {
 
-	private Random random;
 	double cost;
-	private double pPickup;
-	private int numActions;
 	private Agent myAgent;
 	private int numCities;
 	private City[] citiesIndex;
@@ -28,9 +25,6 @@ public class ReactiveTemplate implements ReactiveBehavior {
 	private HashMap<State, Double> V;
 	private HashMap<KeyReward, Double> Q;
 	private HashMap<State, Integer> best;
-	private double[][] distributionsTable;
-	private double[][] rewardsTable;
-	private int[][] hasNeighbour;
 	private double eps;
 	
 
@@ -45,37 +39,33 @@ public class ReactiveTemplate implements ReactiveBehavior {
 			citiesIndex[index] = c;
 			index++;
 		}
-		//create the tables to work with (also the hasNeighbour one)
+		
 		
 		// Reads the discount factor from the agents.xml file.
 		// If the property is not present it defaults to 0.95
 		Double discount = agent.readProperty("discount-factor", Double.class,
-						0.85);
-		
-		this.random = new Random();
-		this.pPickup = discount;
-		this.numActions = 0;
+						0.95);
 		this.myAgent = agent;
 		
 		cost = agent.vehicles().get(0).costPerKm();
 		
-		
-		createRewarDistributionTable(td, topology);
+		//create the tables to work with 
 		createTransitionsRewardsTable(topology, td, cost);
 		
+		
+		//Debug printing 
 		for (Key k : transitionsTable.keySet())
 		{
 			System.out.println("Stato " + k.fromState.x.id + " " + k.fromState.y.id + " Azione " + k.action + " a Stato " + " Probab " + transitionsTable.get(k));
 		}
-		//System.out.println(V.size());
-		//System.out.println(best.size());
-		//System.out.println(Q.size());
-		System.out.println(transitionsTable.size());
-		
 		
 		//Compute optimal policy
-		computeOptimalPolicy(0.95);
+		computeOptimalPolicy(discount.doubleValue());
 		
+		System.out.println(V.size());
+		System.out.println(best.size());
+		System.out.println(Q.size());
+		System.out.println(transitionsTable.size());
 		
 		
 		
@@ -96,10 +86,12 @@ public class ReactiveTemplate implements ReactiveBehavior {
 		}
 		
 		if (best.get(currentState) == numCities) { 
+			//Pick and deliver
 			action = new Pickup(availableTask);
 		
 		}
 		else { 
+			//Just move to the best neighbor city
 			action = new Move(citiesIndex[best.get(currentState)]);				
 		}
 		return action;
@@ -114,82 +106,47 @@ public class ReactiveTemplate implements ReactiveBehavior {
 
 		for (City fx : topology) {
 			for (City fy : topology) {
-				//Create the current state (current cities, dest. task city)
+				//Create the current state (current cities, task destination city)
 				State fState = new State(fx, fy);
 			
-				//No Task found, go anywhere (neighbour)
-				//Taking action from 0 to numCities-1 depending on the dest. city
+				//No Task found, go anywhere (neighborhood)
+				//Taking action from 0 to numCities-1 depending on the destination city
 				if (fx.id == fy.id) {
 					
 					for (City tx : topology) {
 						for (City ty : topology) {
 							//Create the next state (next cities, dest. task next city)
 							State tState = new State(tx,  ty);
-							//the value is the prob. of finding in the des. city (tState.x) a task for the city tState.y
-							//the action is the number of the dest. city
-							if( fState.x.hasNeighbor(tState.x)) transitionsTable.put(new Key(fState,  tx.id, tState), new Double(td.probability(tx, ty)));
+							//the value is the prob. of finding in the destination city (tx) a task for the city ty
+							//the action is the number of the destination city city
+							if( fState.x.hasNeighbor(tx)) transitionsTable.put(new Key(fState,  tx.id, tState), new Double(td.probability(tx, ty)));
 							
 						}	
+						//Reward table R(s,a)
 						if(fState.x.hasNeighbor(tx)) transitionsRewardTable.put(new  KeyReward(fState, tx.id), new Double(-(cost * fState.x.distanceTo(tx))));
 					}				
 				}
 				//Task found
-				//If a tupla (s,a,s') is not in the hashmap, its transition prob. is 0 
+				//If a tupla (s,a,s') is not in the hashmap, its transition probability is 0 
 				else {
 					for (City tx : topology) {
 						for (City ty : topology) {
 							State tState = new State(tx,  ty);
 							//Action numCities (value of) means pick up and deliver
 							if (tx.id == fState.y.id) transitionsTable.put(new Key(fState, numCities, tState), new Double(td.probability(tx, ty)));
-							if(fState.x.hasNeighbor(tState.x)) transitionsTable.put(new Key(fState, tx.id, tState), new Double(td.probability(tx, ty)));
-							
-							
+							//Action tx.id means not to pick up the task and just move, if the city is a neighbor city 
+							if(fState.x.hasNeighbor(tState.x)) transitionsTable.put(new Key(fState, tx.id, tState), new Double(td.probability(tx, ty)));						
 						}
+						//Reward if the task was delivered 
 						if (tx.id == fState.y.id) transitionsRewardTable.put(new  KeyReward(fState, numCities), new Double((td.reward(fState.x, fState.y) -(fState.x.distanceTo(fState.y)*cost)) ));
+						//Reward if just moving without picking the task
 						if(fState.x.hasNeighbor(tx)) transitionsRewardTable.put(new  KeyReward(fState, tx.id), new Double(-(fState.x.distanceTo(tx)*cost)));
-					}
-					
-					
-				
+					}			
 				}
 				
-			}
-			
-			
-		}
-
-		
-	}
-	
-	//Method that keep tracks of task probabilities and create simple table 
-	private void createRewarDistributionTable (TaskDistribution td, Topology topology) {
-		
-		distributionsTable = new double[numCities][numCities];
-		rewardsTable = new double[numCities][numCities];
-		hasNeighbour = new int[numCities][numCities];
-	
-		for (City from : topology) {
-			for (City to : topology) {
-				
-				if (from.id != to.id) {
-					
-					distributionsTable[from.id][to.id] = td.probability(from, to);
-					
-					rewardsTable[from.id][to.id] = td.reward(from, to);
-					if (from.hasNeighbor(to)) hasNeighbour[from.id][to.id] = 1;
-
-				}
-				else {
-					//Probability of not having task in from
-					distributionsTable[from.id][from.id] = td.probability(from, null);
-					rewardsTable[from.id][to.id] = 0;
-					hasNeighbour[from.id][to.id] = 0;
-				}
-			}
-		}
-
-	}
-	
+			}			
+		}		
+	}	
 	private void computeOptimalPolicy(double discount){
 		
 		V = new HashMap<State, Double>();
@@ -208,6 +165,7 @@ public class ReactiveTemplate implements ReactiveBehavior {
 		double diff = 100;
 		int h=0;
 		double tmp = 0;
+		//Value Iteration algorithm
 		while (diff > eps){
 			for (State si : V.keySet()) {
 				Vp.replace(si, new Double(V.get(si)));
@@ -250,6 +208,7 @@ public class ReactiveTemplate implements ReactiveBehavior {
 		System.out.println(h);
 	}
 	
+	//Custom classes
 	private class Key {
 		//from 0 to n^2 -1 
 		public State fromState;
