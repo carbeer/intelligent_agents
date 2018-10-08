@@ -49,6 +49,7 @@ public class ReactiveTemplate implements ReactiveBehavior {
 		
 		cost = agent.vehicles().get(0).costPerKm();
 		
+		
 		//create the tables to work with 
 		createTransitionsRewardsTable(topology, td, cost);
 		
@@ -56,18 +57,11 @@ public class ReactiveTemplate implements ReactiveBehavior {
 		//Debug printing 
 		for (Key k : transitionsTable.keySet())
 		{
-			System.out.println("Stato " + k.fromState.x.id + " " + k.fromState.y.id + " Azione " + k.action + " a Stato " + " Probab " + transitionsTable.get(k));
+			System.out.println("From State: " + k.fromState.x.id + " " + k.fromState.y.id + " with action " + k.action + " to State: "  + k.toState.x.id + " " + k.toState.y.id + " " + " with probability " + transitionsTable.get(k));
 		}
 		
 		//Compute optimal policy
 		computeOptimalPolicy(discount.doubleValue());
-		
-		System.out.println(V.size());
-		System.out.println(best.size());
-		System.out.println(Q.size());
-		System.out.println(transitionsTable.size());
-		
-		
 		
 	}
 
@@ -76,6 +70,7 @@ public class ReactiveTemplate implements ReactiveBehavior {
 		Action action;
 		State currentState;
 		City currentCity = vehicle.getCurrentCity();
+
 		
 		//Figure out current state
 		if (availableTask != null) {
@@ -197,13 +192,12 @@ public class ReactiveTemplate implements ReactiveBehavior {
 					
 				}
 			}	
-			
-			System.out.println(diff);
 			h++;
 			diff = 0;
 			for (State ss : V.keySet()) {
 				if(Math.abs(V.get(ss) - Vp.get(ss)) > diff) diff =  Math.abs(V.get(ss) - Vp.get(ss)) ;					
-			}				
+			}	
+			System.out.println(diff);
 		}
 		System.out.println(h);
 	}
