@@ -10,7 +10,7 @@ import logist.task.TaskDistribution;
 import logist.task.TaskSet;
 import logist.topology.Topology;
 import logist.topology.Topology.City;
-
+import java.util.*;
 /**
  * An optimal planner for one vehicle.
  */
@@ -18,6 +18,10 @@ import logist.topology.Topology.City;
 public class DeliberativeTemplate implements DeliberativeBehavior {
 
 	enum Algorithm { BFS, ASTAR }
+	int numCities;
+	int numTasks;
+	private City[] citiesIndex;
+	private Task[] taskList;
 	
 	/* Environment */
 	Topology topology;
@@ -35,6 +39,14 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		this.topology = topology;
 		this.td = td;
 		this.agent = agent;
+		numCities = topology.size();
+		
+		int k = 0;
+		for (City c : topology.cities()) {
+			citiesIndex[k] = c;
+			k++;
+		}
+		
 		
 		// initialize the planner
 		int capacity = agent.vehicles().get(0).capacity();
@@ -49,6 +61,14 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 	@Override
 	public Plan plan(Vehicle vehicle, TaskSet tasks) {
 		Plan plan;
+		
+		numTasks = tasks.size();
+		taskList = new Task[tasks.size()];
+		int i=0;
+		for (Task t : tasks) {
+			taskList[i] = t;
+			i++;
+		}
 
 		// Compute the plan with the selected algorithm.
 		switch (algorithm) {
@@ -88,6 +108,13 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		}
 		return plan;
 	}
+	
+	private Plan deliberativePlan (Vehicle vehicle, TaskSet tasks) {
+		Plan plan;
+		
+		
+		return plan;
+	}
 
 	@Override
 	public void planCancelled(TaskSet carriedTasks) {
@@ -98,4 +125,55 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			// plan is computed.
 		}
 	}
+	//compute all possible states reachable from current state 's'
+	private ArrayList<State> succFunction (State s){
+		//future states
+		ArrayList<State> fs = new ArrayList<State>();
+		int n = s.stateList.length;
+		
+		//simulate actions
+		for (int i = 0; i < n-1; i++) {
+			switch(s.stateList[i]) {
+			case 0:
+				//pick up task i
+				int[] a = s.stateList.clone();
+				a[i] = 1;
+				//TODO update cost of this action in e[n-2]
+				//...
+				//Update current city (last index)
+				a[-1] = taskList[i].pickupCity.id;
+				fs.add(new State(a));
+				break;
+			case 1:
+				//deliver task i
+				int[] b = s.stateList.clone();
+				b[i] = 2;
+				//TODO update cost of this action in e[n-2]
+				//...
+				//Update current city (last index)
+				b[-1] = taskList[i].deliveryCity.id;
+				fs.add(new State(b));
+				break;
+			case 2:
+				break;
+			}
+		}
+		return fs;
+		
+	}
+	
+	private class State{
+		//last values are the cumulative cost and the current city
+		//first values are associated to the tasks
+		//0 = not picked up not delivered
+		//1 = picked up not delivered
+		//2 = delivered
+		//current city in {0, ... , numCity-1}
+		int[] stateList;
+		
+		public State(int[] s) {
+			stateList = s.clone();
+		}
+	}
+
 }
