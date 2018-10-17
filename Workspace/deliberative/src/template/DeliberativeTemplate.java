@@ -77,7 +77,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			plan = naivePlan(vehicle, tasks);
 			break;
 		case BFS:
-			// ...
+			//create BFS passing vehicle, taskslist, citiesindex
 			plan = naivePlan(vehicle, tasks);
 			break;
 		default:
@@ -126,54 +126,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		}
 	}
 	//compute all possible states reachable from current state 's'
-	private ArrayList<State> succFunction (State s){
-		//future states
-		ArrayList<State> fs = new ArrayList<State>();
-		int n = s.stateList.length;
-		
-		//simulate actions
-		for (int i = 0; i < n-1; i++) {
-			switch(s.stateList[i]) {
-			case 0:
-				//pick up task i
-				int[] a = s.stateList.clone();
-				a[i] = 1;
-				//TODO update cost of this action in e[n-2]
-				//...
-				//Update current city (last index)
-				a[-1] = taskList[i].pickupCity.id;
-				fs.add(new State(a));
-				break;
-			case 1:
-				//deliver task i
-				int[] b = s.stateList.clone();
-				b[i] = 2;
-				//TODO update cost of this action in e[n-2]
-				//...
-				//Update current city (last index)
-				b[-1] = taskList[i].deliveryCity.id;
-				fs.add(new State(b));
-				break;
-			case 2:
-				break;
-			}
-		}
-		return fs;
-		
-	}
-	
-	private class State{
-		//last values are the cumulative cost and the current city
-		//first values are associated to the tasks
-		//0 = not picked up not delivered
-		//1 = picked up not delivered
-		//2 = delivered
-		//current city in {0, ... , numCity-1}
-		int[] stateList;
-		
-		public State(int[] s) {
-			stateList = s.clone();
-		}
-	}
+
+
 
 }
