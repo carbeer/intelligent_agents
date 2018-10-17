@@ -39,14 +39,15 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		this.topology = topology;
 		this.td = td;
 		this.agent = agent;
-		numCities = topology.size();
-		
+		this.numCities = topology.size();
+		this.citiesIndex = new City[this.numCities];
 		int k = 0;
 		for (City c : topology.cities()) {
 			citiesIndex[k] = c;
 			k++;
 		}
 		
+
 		
 		// initialize the planner
 		int capacity = agent.vehicles().get(0).capacity();
@@ -61,7 +62,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 	@Override
 	public Plan plan(Vehicle vehicle, TaskSet tasks) {
 		Plan plan;
-		
+	
 		numTasks = tasks.size();
 		taskList = new Task[tasks.size()];
 		int i=0;
@@ -69,6 +70,8 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			taskList[i] = t;
 			i++;
 		}
+		
+		Plan p = deliberativePlan(vehicle, tasks);
 
 		// Compute the plan with the selected algorithm.
 		switch (algorithm) {
@@ -110,9 +113,9 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 	}
 	
 	private Plan deliberativePlan (Vehicle vehicle, TaskSet tasks) {
-		Plan plan;
-		
-		
+		Plan plan = new Plan(vehicle.getCurrentCity());
+		BFS bfs = new BFS(vehicle, this.citiesIndex, this.taskList, this.numCities );
+		System.out.println(bfs.bfs.size());
 		return plan;
 	}
 

@@ -15,8 +15,8 @@ import java.util.*;
 
 public class BFS {
 	
-	int numCities;
-	int numTasks;
+	public int numCities;
+	public int numTasks;
 	private City[] citiesIndex;
 	private Task[] taskList;
 	public ArrayList<Node> bfs;
@@ -28,35 +28,36 @@ public class BFS {
 		this.citiesIndex = citiesIndex;
 		this.taskList = taskList;
 		this.numCities = numCities;
-		this.numTasks = this.taskList.length;
+		this.numTasks = taskList.length;
 		this.vehicle = vehicle;
 		this.goalNodes = new ArrayList<Node>();
 		
 		//root
 		this.root = new Node(new State(new int[this.numTasks + 1], this.vehicle.capacity()), 0, null);
-		this.root.state.stateList[-1] = this.vehicle.getCurrentCity().id;		
+		this.root.state.stateList[this.numTasks] = this.vehicle.getCurrentCity().id;		
 		createBfs();
 	}
 	
-	private ArrayList<Node> getSuccessors (Node current){
+	private ArrayList<Node> getSucc (Node current){
 		//future nodes
 		ArrayList<Node> fs = new ArrayList<Node>();
-		int n = current.state.stateList.length;
+		int n = this.numTasks;
 		double actionCost =0;
 		boolean isGoal = true;
 		
 		//simulate actions and create new nodes
-		for (int i = 0; i < n-1; i++) {
+		for (int i = 0; i < n; i++) {
 			if (current.state.stateList[i] == 0) {
 				//pick up task i
 				int[] a = current.state.stateList.clone();
+				
 				//Can I take it or not 
 				if ( this.taskList[i].weight < current.state.capacityLeft ) {
 					a[i] = 1;
-					actionCost = this.vehicle.costPerKm() * citiesIndex[current.state.stateList[-1]].distanceTo(this.citiesIndex[taskList[i].pickupCity.id]);
+					actionCost = this.vehicle.costPerKm() * citiesIndex[current.state.stateList[n]].distanceTo(this.citiesIndex[taskList[i].pickupCity.id]);
 					Node newNode = new Node(new State(a, current.state.capacityLeft - this.taskList[i].weight), current.cost + actionCost, current);
 					//Update current city (last index)			
-					a[-1] = taskList[i].pickupCity.id;
+					a[this.numTasks] = taskList[i].pickupCity.id;
 					fs.add(newNode);
 				}				
 			}
@@ -64,10 +65,10 @@ public class BFS {
 				//deliver task i
 				int[]b = current.state.stateList.clone();
 				b[i] = 2;
-				actionCost = this.vehicle.costPerKm() * citiesIndex[current.state.stateList[-1]].distanceTo(this.citiesIndex[taskList[i].deliveryCity.id]);
+				actionCost = this.vehicle.costPerKm() * citiesIndex[current.state.stateList[n]].distanceTo(this.citiesIndex[taskList[i].deliveryCity.id]);
 				Node newNode = new Node(new State(b, current.state.capacityLeft + this.taskList[i].weight), current.cost + actionCost, current);
 				//Update current city (last index)
-				b[-1] = taskList[i].deliveryCity.id;
+				b[this.numTasks] = taskList[i].deliveryCity.id;
 				fs.add(newNode);
 			}
 		}
@@ -82,23 +83,32 @@ public class BFS {
 		bfs.add(this.root);
 		Q.add(this.root);
 		
-		int goal = 0;
+		int goal;
 		
 		while(!(Q.isEmpty())) {
 			
+			goal =0;
+			
 			Node current = Q.remove(0);
-			for (int j=0; j < this.numTasks -1; j++ )
+			for (int j=0; j < this.numTasks; j++ )
 				goal += current.state.stateList[j]; 
 			if(goal == this.numTasks * 2) {
 				this.goalNodes.add(current);
 				continue;
 			}
 			//Add new level 
-			Q.addAll(getSuccessors(current));
+			ArrayList<Node> newLevel = getSucc(current);
+			this.bfs.addAll(newLevel);
+			Q.addAll(newLevel);
 			
 		}
 	}
 	
+	public Plan computePlan () {
+		Plan plan = new Plan(this.vehicle.getCurrentCity());
+		
+		return plan;
+	}
 
 	
 	private class State{
