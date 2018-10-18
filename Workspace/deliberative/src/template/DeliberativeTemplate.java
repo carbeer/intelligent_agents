@@ -71,6 +71,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			i++;
 		}
 		
+		//DEbug
 		Plan p = deliberativePlan(vehicle, tasks);
 
 		// Compute the plan with the selected algorithm.
@@ -86,10 +87,13 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		default:
 			throw new AssertionError("Should not happen.");
 		}		
-		return plan;
+		return p;
 	}
 	
 	private Plan naivePlan(Vehicle vehicle, TaskSet tasks) {
+		for(Task task : tasks) {
+			System.out.println(task.id + " " + task.pickupCity.name + " " + task.deliveryCity.name);
+		}
 		City current = vehicle.getCurrentCity();
 		Plan plan = new Plan(current);
 
@@ -116,6 +120,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		Plan plan = new Plan(vehicle.getCurrentCity());
 		BFS bfs = new BFS(vehicle, this.citiesIndex, this.taskList, this.numCities );
 		System.out.println(bfs.bfs.size());
+		plan = bfs.computePlan();
 		return plan;
 	}
 
