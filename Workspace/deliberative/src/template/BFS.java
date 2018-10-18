@@ -106,7 +106,7 @@ public class BFS {
 				b[i] = 2;
 				actionCost = this.vehicle.costPerKm() * citiesIndex[current.state.stateList[n]].distanceTo(this.taskList[i].deliveryCity);
 				b[n] = taskList[i].deliveryCity.id;
-				Node newNode = new Node(new State(b, current.state.capacityLeft + this.taskList[i].weight + deliveredWeight), current.cost + actionCost, current);					
+				Node newNode = new Node(new State(b, current.state.capacityLeft + this.taskList[i].weight + deliveredWeight- pickWeight), current.cost + actionCost, current);					
 				fs.add(newNode);
 						
 				
