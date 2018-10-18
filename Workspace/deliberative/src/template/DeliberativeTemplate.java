@@ -133,3 +133,31 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 
 
 }
+
+class State{
+	//last value is the current city
+	//first values are associated to the tasks
+	//0 = not picked up not delivered
+	//1 = picked up not delivered
+	//2 = delivered
+	public int[] stateList;
+	public int currentCityId;
+	public double capacityLeft;
+
+	public State(int[] s, int currentCityId, double capacityLeft) {
+		stateList = s.clone();
+		this.currentCityId = currentCityId;
+		this.capacityLeft = capacityLeft;
+	}
+}
+class Node{
+	public Node parent;
+	public State state;
+	public double cost;
+
+	public Node (State state, double cost, Node parent) {
+		this.cost = cost;
+		this.state = state;
+		this.parent = parent;
+	}
+}
