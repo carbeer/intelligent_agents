@@ -87,7 +87,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		default:
 			throw new AssertionError("Should not happen.");
 		}		
-		return plan;
+		return p;
 	}
 	
 	private Plan naivePlan(Vehicle vehicle, TaskSet tasks) {

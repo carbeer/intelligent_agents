@@ -45,51 +45,69 @@ public class BFS {
 		ArrayList<Node> fs = new ArrayList<Node>();
 		int n = this.numTasks;
 		double actionCost =0;
-		//boolean isGoal = true;
+		City currentCity = this.citiesIndex[current.state.stateList[n]];
 		//simulate actions and create new nodes
 		for (int i = 0; i < n; i++) {
-				
-			if (current.state.stateList[i] == 0 ) {
+			
+			if (current.state.stateList[i] == 0 & this.taskList[i].weight  < current.state.capacityLeft) {
 				//pick up task i
 				int[] a = current.state.stateList.clone();
 				double deliveredWeight = 0;
+				double pickWeight = 0;
 				
-				for (int d =0; d<n; d++) {
-					if (current.state.stateList[d] == 1 & this.taskList[i].deliveryCity.equals(this.taskList[d].deliveryCity) ) {
-						//deliver task i
-						a[d] = 2;
-						deliveredWeight += this.taskList[d].weight;
+				City pickCity = this.taskList[i].pickupCity;
+				
+				for (City city : currentCity.pathTo(pickCity)) {
+					for (int d =0; d<n; d++) {
+						if (current.state.stateList[d] == 1 & this.taskList[d].deliveryCity.equals(city) & i!=d ) {
+							//deliver task i
+							a[d] = 2;
+							deliveredWeight += this.taskList[d].weight;
+						}
+						else if ( i != d & current.state.stateList[d] == 0 & this.taskList[d].pickupCity.equals(city) & pickWeight + this.taskList[d].weight + this.taskList[i].weight < current.state.capacityLeft + deliveredWeight) {
+							//deliver task i
+							a[d] = 1;
+							pickWeight += this.taskList[d].weight;
+						}
 					}
-				}
-				
-				if(this.taskList[i].weight  < current.state.capacityLeft+ deliveredWeight) {
+					
+				}			
+				//if(this.taskList[i].weight  < current.state.capacityLeft+ deliveredWeight) {
 					a[i] = 1;
 					actionCost = this.vehicle.costPerKm() * citiesIndex[current.state.stateList[n]].distanceTo(this.taskList[i].pickupCity);
 					a[n] = taskList[i].pickupCity.id;
 				
-					Node newNode = new Node(new State(a, current.state.capacityLeft - this.taskList[i].weight + deliveredWeight ), current.cost + actionCost, current);		
+					Node newNode = new Node(new State(a, current.state.capacityLeft - this.taskList[i].weight + deliveredWeight - pickWeight ), current.cost + actionCost, current);		
 					fs.add(newNode);
-				}
+					
+				//}
 			}
 			else if (current.state.stateList[i] == 1) {
+				
+				City deliverCity = this.taskList[i].deliveryCity;
 				//deliver task i
 				int[]b = current.state.stateList.clone();
 				int deliveredWeight = 0;
-				/*
-				for (City city : this.citiesIndex[current.state.stateList[n]].pathTo(taskList[i].deliveryCity)){*/
+				int pickWeight = 0;
+				for (City city : currentCity.pathTo(deliverCity)) {
 					for (int d =0; d<n; d++) {
-						if (current.state.stateList[d] == 1 & this.taskList[i].deliveryCity.equals(this.taskList[d].deliveryCity) & i!=d ) {
+						if (current.state.stateList[d] == 1 & this.taskList[d].deliveryCity.equals(city) & i!=d ) {
 							//deliver task i
 							b[d] = 2;
 							deliveredWeight += this.taskList[d].weight;
 						}
+						else if ( i != d & current.state.stateList[d] == 0 & this.taskList[d].pickupCity.equals(city) & pickWeight + this.taskList[d].weight + this.taskList[i].weight < current.state.capacityLeft + deliveredWeight) {
+							//deliver task i
+							b[d] = 1;
+							pickWeight += this.taskList[d].weight;
+						}
 					}
-					
-					b[i] = 2;
-					actionCost = this.vehicle.costPerKm() * citiesIndex[current.state.stateList[n]].distanceTo(this.taskList[i].deliveryCity);
-					b[n] = taskList[i].deliveryCity.id;
-					Node newNode = new Node(new State(b, current.state.capacityLeft + this.taskList[i].weight + deliveredWeight), current.cost + actionCost, current);					
-					fs.add(newNode);
+				}
+				b[i] = 2;
+				actionCost = this.vehicle.costPerKm() * citiesIndex[current.state.stateList[n]].distanceTo(this.taskList[i].deliveryCity);
+				b[n] = taskList[i].deliveryCity.id;
+				Node newNode = new Node(new State(b, current.state.capacityLeft + this.taskList[i].weight + deliveredWeight), current.cost + actionCost, current);					
+				fs.add(newNode);
 						
 				
 				
@@ -127,15 +145,6 @@ public class BFS {
 				this.bfs.put(current, y);
 				Q.addAll(newLevel);
 			}
-			
-			if (y  == 0) {
-				System.out.println("State : " + y);
-				for (int u =0; u <=this.numTasks; u++) {
-					System.out.println(current.state.stateList[u]);
-				}
-				System.out.println("Goal Node size " + this.goalNodes.size());
-			}
-			y++;
 		}
 	}
 	
@@ -149,7 +158,7 @@ public class BFS {
 			path.add(bestNode);
 			bestNode = bestNode.parent;
 		} 
-		
+		//DEBUG 
 		System.out.println(path.size());
 		for (Node n : this.path) {
 			System.out.println(n.cost);
