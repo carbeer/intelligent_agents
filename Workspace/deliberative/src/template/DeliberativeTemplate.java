@@ -118,7 +118,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 	
 	private Plan deliberativePlan (Vehicle vehicle, TaskSet tasks) {
 		Plan plan = new Plan(vehicle.getCurrentCity());
-		BFS bfs = new BFS(vehicle, this.citiesIndex, this.taskList, this.numCities );
+		Astar bfs = new Astar(vehicle, this.citiesIndex, this.taskList, this.numCities );
 		System.out.println(bfs.bfs.size());
 		plan = bfs.computePlan();
 		return plan;

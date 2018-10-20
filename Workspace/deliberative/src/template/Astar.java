@@ -13,9 +13,9 @@ import logist.topology.Topology.City;
 import java.util.*;
 
 
-public class BFS {
+public class Astar {
 	
-	public LinkedHashMap<Node, Double> Q; 
+	public PriorityQueue<Node> Q; 
 	public int numCities;
 	public int numTasks;
 	private City[] citiesIndex;
@@ -27,14 +27,14 @@ public class BFS {
 	public ArrayList<Node> path;
 	public HashMap<NodeCompare, Double> compare;
 	
-	public BFS (Vehicle vehicle, City[] citiesIndex, Task[] taskList, int numCities) {
+	public Astar (Vehicle vehicle, City[] citiesIndex, Task[] taskList, int numCities) {
 		this.citiesIndex = citiesIndex;
 		this.taskList = taskList;
 		this.numCities = numCities;
 		this.numTasks = taskList.length;
 		this.vehicle = vehicle;
 		this.goalNodes = new ArrayList<Node>();
-		this.Q = new LinkedHashMap<Node, Double>();
+		this.Q = new PriorityQueue<Node>(NodeComparator);
 		this.compare = new HashMap<NodeCompare, Double>();
 		
 		//root
@@ -44,9 +44,9 @@ public class BFS {
 		createBfs();
 	}
 	
-	private ArrayList<Node> getSuccessor (Node current){
+	private PriorityQueue<Node> getSuccessor (Node current){
 		//future nodes
-		ArrayList<Node> fs = new ArrayList<Node>();
+		PriorityQueue<Node> fs = new PriorityQueue<Node>(NodeComparator);
 		int n = this.numTasks;
 		double actionCost =0;
 
@@ -111,7 +111,7 @@ public class BFS {
 		
 		this.bfs = new HashMap<Node, Double>();
 		//bfs.put(this.root, 0.);
-		Q.put(this.root, 0.);
+		Q.add(this.root);
 		
 		int goal;
 		int y = 0;
@@ -119,21 +119,18 @@ public class BFS {
 			
 			goal =0;
 			
-			Node current = Q.entrySet().iterator().next().getKey();
-			Q.remove(current);
+			Node current = this.Q.remove();
 			for (int j=0; j < this.numTasks; j++ )
 				goal += current.state.stateList[j]; 
 			if(goal == this.numTasks * 2) {
 				this.goalNodes.add(current);
-				continue;
+				break;
 			}
 			//Add new level
 			if (!this.bfs.containsKey(current) ) {
-				ArrayList<Node> newLevel = getSuccessor(current);
+				PriorityQueue<Node> newLevel = getSuccessor(current);
 				this.bfs.put(current, current.cost);
-				for (Node n : newLevel) {
-					Q.put(n, new Double(n.cost));
-				}
+				this.Q.addAll(newLevel);
 			}
 		}
 	}
@@ -222,7 +219,6 @@ public class BFS {
 		
 		@Override
 		public int hashCode() {
-			
 			return Arrays.hashCode(this.state.stateList);
 		}
 		
@@ -269,7 +265,18 @@ public class BFS {
 			return true;
 		 }
 	}
-	
-	
-
+	Comparator<Node> NodeComparator = new Comparator<Node>() {
+        @Override
+        public int compare(Node n1, Node n2) {
+            return heuristic(n1) - heuristic(n2);
+        }
+    };
+    private int heuristic (Node n) {
+    	double h = 0;
+    	for (int y = 0; y<this.numTasks; y++) {
+    		if (n.state.stateList[y] == 0 ) h = this.taskList[y].pickupCity.distanceTo(this.citiesIndex[n.state.stateList[this.numTasks]]);   			
+    	}
+    	
+    	return (int) (n.cost + h);
+    }
 }
