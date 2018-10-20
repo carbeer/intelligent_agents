@@ -10,6 +10,8 @@ import logist.task.TaskDistribution;
 import logist.task.TaskSet;
 import logist.topology.Topology;
 import logist.topology.Topology.City;
+
+import java.lang.reflect.Array;
 import java.util.*;
 /**
  * An optimal planner for one vehicle.
@@ -17,7 +19,7 @@ import java.util.*;
 @SuppressWarnings("unused")
 public class DeliberativeTemplate implements DeliberativeBehavior {
 
-	enum Algorithm { BFS, ASTAR }
+	enum Algorithm { BFS, ASTAR, NAIVE }
 	int numCities;
 	int numTasks;
 	private City[] citiesIndex;
@@ -46,9 +48,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			citiesIndex[k] = c;
 			k++;
 		}
-		
 
-		
 		// initialize the planner
 		int capacity = agent.vehicles().get(0).capacity();
 		String algorithmName = agent.readProperty("algorithm", String.class, "ASTAR");
@@ -61,7 +61,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 	
 	@Override
 	public Plan plan(Vehicle vehicle, TaskSet tasks) {
-		Plan plan;
+		Plan plan = null;
 	
 		numTasks = tasks.size();
 		taskList = new Task[tasks.size()];
@@ -70,24 +70,29 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			taskList[i] = t;
 			i++;
 		}
-		
-		//DEbug
-		Plan p = deliberativePlan(vehicle, tasks);
 
+		System.out.printf("Computing the plan with algorithm %s\n", agent.readProperty("algorithm", String.class, "NAIVE").toString());
 		// Compute the plan with the selected algorithm.
 		switch (algorithm) {
 		case ASTAR:
 			// ...
-			plan = naivePlan(vehicle, tasks);
+			try {
+				plan = new ASTAR(vehicle, citiesIndex, taskList).getPlan();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 			break;
 		case BFS:
 			//create BFS passing vehicle, taskslist, citiesindex
+			plan = new BFS(vehicle, this.citiesIndex, this.taskList, this.numCities ).computePlan();
+			break;
+		case NAIVE:
 			plan = naivePlan(vehicle, tasks);
 			break;
 		default:
 			throw new AssertionError("Should not happen.");
 		}		
-		return p;
+		return plan;
 	}
 	
 	private Plan naivePlan(Vehicle vehicle, TaskSet tasks) {
@@ -115,33 +120,21 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		}
 		return plan;
 	}
-	
-	private Plan deliberativePlan (Vehicle vehicle, TaskSet tasks) {
-		Plan plan = new Plan(vehicle.getCurrentCity());
-		BFS bfs = new BFS(vehicle, this.citiesIndex, this.taskList, this.numCities );
-		System.out.println(bfs.bfs.size());
-		plan = bfs.computePlan();
-		return plan;
-	}
 
 	@Override
 	public void planCancelled(TaskSet carriedTasks) {
 		
 		if (!carriedTasks.isEmpty()) {
+			// TODO: Handle this for multiple agents
 			// This cannot happen for this simple agent, but typically
 			// you will need to consider the carriedTasks when the next
 			// plan is computed.
 		}
 	}
 	//compute all possible states reachable from current state 's'
-
-
-
 }
 
 class State{
-	//last value is the current city
-	//first values are associated to the tasks
 	//0 = not picked up not delivered
 	//1 = picked up not delivered
 	//2 = delivered
@@ -151,10 +144,19 @@ class State{
 
 	public State(int[] s, int currentCityId, double capacityLeft) {
 		stateList = s.clone();
-		this.currentCityId = currentCityId;
 		this.capacityLeft = capacityLeft;
 	}
+
+	public boolean isFinalState() {
+		for (int i : stateList) {
+			if (i != 2) {
+				return false;
+			}
+		}
+		return true;
+	}
 }
+
 class Node{
 	public Node parent;
 	public State state;
@@ -164,5 +166,56 @@ class Node{
 		this.cost = cost;
 		this.state = state;
 		this.parent = parent;
+	}
+
+	public String getId() {
+		return Arrays.toString(state.stateList) + state.currentCityId;
+	}
+	@Override
+	public int hashCode() {
+		return Arrays.hashCode(this.state.stateList);
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		Node o = (Node) obj;
+		if (!Arrays.equals(this.state.stateList, o.state.stateList))
+			return false;
+		if (this.cost != o.cost)
+			return false;
+		return true;
+	}
+}
+
+class NodeCompare{
+	public Node parent;
+	public State state;
+	public double cost;
+
+	public NodeCompare (State state, double cost, Node parent) {
+		this.cost = cost;
+		this.state = state;
+		this.parent = parent;
+	}
+
+	@Override
+	public int hashCode() {
+		return Arrays.hashCode(this.state.stateList);
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		NodeCompare o = (NodeCompare) obj;
+		if (!Arrays.equals(this.state.stateList, o.state.stateList))
+			return false;
+		return true;
 	}
 }

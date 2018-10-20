@@ -12,74 +12,123 @@ public class ASTAR {
     Vehicle vehicle;
     Topology.City[] citiesIndex;
     Task[] taskList;
-    Map<int[], ArrayList<Integer>> knownStates;
+    Map<String, Double> knownStates;
     public ASTAR(Vehicle vehicle, Topology.City[] citiesIndex, Task[] taskList) {
         this.vehicle = vehicle;
         this.citiesIndex = citiesIndex;
         this.taskList = taskList;
-        this.knownStates = new HashMap<int[], ArrayList<Integer>>();
+        this.knownStates = new HashMap<String, Double>();
     }
 
-    public ArrayList<State> getSuccessorStates(State state) {
-        System.out.printf("Got the following initial state: %s, %d, %f\n", Arrays.toString(state.stateList), state.currentCityId, state.capacityLeft);
-        ArrayList<State> successors = new ArrayList<>();
-        for (Topology.City c : citiesIndex[state.currentCityId].neighbors()) {
-            boolean delivered = false;
+
+    public ArrayList<Node> getSuccessorNodes(Node node) {
+        Node nextNode;
+
+        System.out.printf("Got the following initial node: %d, %s, %d, %f\n", node.state.currentCityId, Arrays.toString(node.state.stateList), node.state.currentCityId, node.state.capacityLeft);
+        ArrayList<Node> successors = new ArrayList<>();
+        for (Topology.City c : citiesIndex[node.state.currentCityId].neighbors()) {
             System.out.printf("In neighbor city %d now\n", c.id);
 
             for (int i = 0; i < taskList.length; i++) {
-                // TODO: Pickup and delivery in one node!
                 // Try to deliver tasks
-                if (state.stateList[i] == 1 && taskList[i].deliveryCity == c) {
+                if (node.state.stateList[i] == 1 && taskList[i].deliveryCity == c) {
                     System.out.printf("Can deliver task %d in City %d\n", i, c.id);
-                    int newStateList[] = state.stateList.clone();
-                    newStateList[i] = 2;
-                    State successor = new State(newStateList, c.id, state.capacityLeft+taskList[i].weight);
-                    successors.add(successor);
-                    delivered = true;
+                    nextNode = deliver(node, i);
+                    if (!knownStates.containsKey(nextNode.getId()) || knownStates.get(nextNode.getId()) > nextNode.cost) {
+                        successors.add(nextNode);
+                        knownStates.put(nextNode.getId(), nextNode.cost);
+                    }
                 }
                 // Pickup a task
-                if (state.stateList[i] == 0 && taskList[i].pickupCity == c) {
-                    if (state.capacityLeft >= taskList[i].weight) {
-                        int newStateList[] = state.stateList.clone();
-                        newStateList[i] = 1;
-                        successors.add(new State(newStateList, c.id, state.capacityLeft-taskList[i].weight));
+                if (node.state.stateList[i] == 0 && taskList[i].pickupCity == c) {
+                    if (node.state.capacityLeft >= taskList[i].weight) {
+                        nextNode = pickUp(node, i);
+                        if (!knownStates.containsKey(nextNode.getId()) || knownStates.get(nextNode.getId()) > nextNode.cost) {
+                            successors.add(nextNode);
+                            knownStates.put(nextNode.getId(), nextNode.cost);
+                        }
                     } else {
                         System.out.println("Couldn't pick up the task because there is not enough capacity left.");
                     }
                 }
             }
-            if (!delivered)  {
-                System.out.printf("Can't deliver any task in City %d\n", c.id);
-                if (knownStates.containsKey(state.stateList)) {
-                    if (!knownStates.get(state.stateList).contains(state.currentCityId)) {
-                        System.out.println("Know the state but not the city.");
-                        int newStateList[] = state.stateList.clone();
-                        successors.add(new State(newStateList, c.id, state.capacityLeft));
-                        knownStates.get(state.stateList).add(state.currentCityId);
-                    } else {
-                        System.out.println("Know the state and the city.");
-                    }
+
+            System.out.printf("Can't deliver any task in City %d\n", c.id);
+            nextNode = moveTo(node, c);
+            if (knownStates.containsKey(nextNode.getId())) {
+                if (knownStates.get(nextNode.getId()) > nextNode.cost) {
+                    successors.add(nextNode);
+                    System.out.println("Found cost improvement");
+                    knownStates.put(nextNode.getId(), nextNode.cost);
                 } else {
-                    System.out.println("Know neither the state nor the city.");
-                    int newStateList[] = state.stateList.clone();
-                    successors.add(new State(newStateList, c.id, state.capacityLeft));
-                    knownStates.put(state.stateList, new ArrayList<Integer>());
-                    knownStates.get(state.stateList).add(state.currentCityId);
+                    System.out.println("Known state, no improvement");
                 }
+            } else {
+                System.out.println("New state and city pair");
+                successors.add(nextNode);
+                knownStates.put(nextNode.getId(), nextNode.cost);
+
             }
         }
-        for (State s : successors) {
-            System.out.printf(" " + citiesIndex[s.currentCityId].name);
+        for (Node n : successors) {
+            System.out.printf(" " + n.state.currentCityId);
+        }
+        System.out.println("known states are:");
+        for (String key: knownStates.keySet()){
+            String value = knownStates.get(key).toString();
+            System.out.println(key + " " + value);
+
+
         }
         return successors;
     }
 
 
-    public Double getHeuristicCosts(State a, State b) {
-        return citiesIndex[a.currentCityId].distanceTo(citiesIndex[b.currentCityId]);
+    public Double getHeuristicCosts(State a) {
+        double costs = 0;
+        for (Task task : taskList) {
+            if (a.stateList[task.id] == 2) {
+                costs -= task.reward;
+            }
+            else if (a.stateList[task.id] == 1) {
+                costs -= task.reward + citiesIndex[a.currentCityId].distanceTo(taskList[task.id].deliveryCity);
+            }
+        }
+        return costs;
     }
 
+    public Node moveTo(Node node, Topology.City c) {
+        State successorState = new State(node.state.stateList.clone(), c.id, node.state.capacityLeft);
+        return new Node(successorState,getHeuristicCosts(node.state, successorState), node);
+    }
+
+    public Node pickUp(Node node, int taskId) {
+        int[] newState = node.state.stateList.clone();
+        newState[taskId] = 1;
+        State successorState = new State(newState, node.state.currentCityId, node.state.capacityLeft - taskList[taskId].weight);
+        return new Node(successorState, getHeuristicCosts(node.state, successorState), node);
+    }
+
+    public Node deliver(Node node, int taskId) {
+        int[] newState = node.state.stateList.clone();
+        newState[taskId] = 2;
+        State successorState = new State(newState, node.state.currentCityId, node.state.capacityLeft - taskList[taskId].weight);
+        return new Node(successorState, getHeuristicCosts(node.state, successorState), node);
+    }
+
+    public Double getHeuristicCosts(State a, State b) {
+        double costs = 0;
+        for (Task task : taskList) {
+            if (b.stateList[task.id] == 2) {
+                costs -= task.reward;
+            }
+            else if (b.stateList[task.id] == 1) {
+                costs -= 0.5 * task.reward;
+            }
+        }
+        double travelCosts = citiesIndex[a.currentCityId].distanceTo(citiesIndex[b.currentCityId]) * vehicle.costPerKm();
+        return costs + travelCosts;
+    }
 
     public Plan getPlan() throws Exception {
         Node optimalDestination = null;
@@ -142,39 +191,25 @@ public class ASTAR {
                 if (found == citiesIndex.length) {
                     return finalNodes;
                 }
+                continue;
             }
             if (C.isEmpty() || !C.containsKey(n) || C.get(n) > n.cost ) {
                 C.put(n.state, n.cost);
-                ArrayList<State> successorStates = getSuccessorStates(n.state);
-                for (State s : successorStates) {
-                    Node successor;
-                    if (n.parent != null) {
-                        successor = new Node(s, getHeuristicCosts(n.state, s) + getHeuristicCosts(n.parent.state, n.state), n);
-                    }
-                    else {
-                        successor = new Node(s, getHeuristicCosts(n.state, s) + 0, n);
-                    }
-                    Q.add(successor);
-
+                ArrayList<Node> successorNodes = getSuccessorNodes(n);
+                for (Node node : successorNodes) {
+                    System.out.printf("Current city %d, next city %s, current state %s, next state %s", n.state.currentCityId, node.state.currentCityId, Arrays.toString(n.state.stateList), Arrays.toString(node.state.stateList));
                 }
+                Q.addAll(successorNodes);
                 Collections.sort(Q, new Comparator<Node>() {
                     @Override
                     public int compare(Node s1, Node s2) {
-                        return new Double(s1.cost).compareTo(s2.cost);
+                        return -new Double(s1.cost).compareTo(s2.cost);
                     }
                 });
+                System.out.printf("\n%d element in Q as of now\n", Q.size());
 
             }
         }
     }
 }
 
-class StateCosts {
-    State state;
-    double costs;
-
-    public StateCosts(State state, double costs) {
-        this.state = state;
-        this.costs = costs;
-    }
-}
