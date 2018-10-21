@@ -132,12 +132,10 @@ class State{
 	//1 = picked up not delivered
 	//2 = delivered
 	public int[] stateList;
-	public int currentCityId;
 	public double capacityLeft;
 
-	public State(int[] s, int currentCityId, double capacityLeft) {
+	public State(int[] s, double capacityLeft) {
 		stateList = s.clone();
-		this.currentCityId = currentCityId;
 		this.capacityLeft = capacityLeft;
 	}
 
@@ -147,6 +145,21 @@ class State{
 				return false;
 			}
 		}
+		return true;
+	}
+
+	@Override
+	public int hashCode() {
+		return Arrays.hashCode(this.stateList);
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (obj == null)
+			return false;
+		State o = (State) obj;
+		if (!Arrays.equals(this.stateList, o.stateList))
+			return false;
 		return true;
 	}
 }
@@ -172,8 +185,6 @@ class Node {
 		if (obj == null)
 			return false;
 		Node o = (Node) obj;
-		if (!(this.state.currentCityId == o.state.currentCityId))
-			return false;
 		if (!Arrays.equals(this.state.stateList, o.state.stateList))
 			return false;
 		if (this.cost != o.cost)
@@ -182,32 +193,4 @@ class Node {
 	}
 }
 
-class NodeCompare {
-	public Node parent;
-	public State state;
-	public double cost;
-
-	public NodeCompare (State state, double cost, Node parent) {
-		this.cost = cost;
-		this.state = state;
-		this.parent = parent;
-	}
-
-	@Override
-	public int hashCode() {
-		return Arrays.hashCode(this.state.stateList);
-	}
-
-	@Override
-	public boolean equals(Object obj) {
-		if (obj == null)
-			return false;
-		NodeCompare o = (NodeCompare) obj;
-		if (!(this.state.currentCityId == o.state.currentCityId))
-			return false;
-		if (!Arrays.equals(this.state.stateList, o.state.stateList))
-			return false;
-		return true;
-	}
-}
 

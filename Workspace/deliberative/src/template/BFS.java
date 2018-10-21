@@ -19,7 +19,7 @@ public class BFS {
 	public Vehicle vehicle;
 	public ArrayList<Node> goalNodes;
 	public ArrayList<Node> path;
-	public HashMap<NodeCompare, Double> compare;
+	public HashMap<State, Double> compare;
 	final int numCities;
 	final int numTasks;
 	final int costPerKm;
@@ -27,53 +27,48 @@ public class BFS {
 
 	public BFS(Vehicle vehicle, City[] citiesIndex, Task[] taskList) {
 		startTime = System.nanoTime();
+		System.out.println("Timer started");
 		this.citiesIndex = citiesIndex;
 		this.taskList = taskList;
 		this.vehicle = vehicle;
 		this.goalNodes = new ArrayList<Node>();
 		this.Q = new Stack<>();
-		this.compare = new HashMap<NodeCompare, Double>();
+		this.compare = new HashMap<State, Double>();
 		this.numCities = citiesIndex.length;
 		this.numTasks = taskList.length;
-		this.root = new Node(new State(new int[numTasks], this.vehicle.getCurrentCity().id, this.vehicle.capacity()), 0, null);
+		this.root = new Node(new State(new int[numTasks+1], this.vehicle.capacity()), 0, null);
+		root.state.stateList[numTasks] = this.vehicle.getCurrentCity().id;
 		this.costPerKm = vehicle.costPerKm();
-		System.out.println("Timer started");
-	}
-
-	ArrayList<Node> getSuccessor(Node current) {
-		ArrayList<Node> fs = new ArrayList<>();
-		return (ArrayList<Node>) getSuccessor(current, fs);
+		executeAlgorithm();
 	}
 
 	Collection<Node> getSuccessor(Node current, Collection<Node> fs) {
 		//future nodes
-		double actionCost = 0;
+		double actionCost;
 
 		//simulate actions and create new nodes
 		for (int i = 0; i < numTasks; i++) {
-			if (current.state.stateList[i] == 0 & this.taskList[i].weight < current.state.capacityLeft) {
+			if (current.state.stateList[i] == 0 && this.taskList[i].weight < current.state.capacityLeft) {
 				//pick up task i
 				int[] a = current.state.stateList.clone();
 				a[i] = 1;
-				int a_city = taskList[i].pickupCity.id;
-				actionCost = this.costPerKm * citiesIndex[current.state.currentCityId].distanceTo(this.taskList[i].pickupCity);
-				Node newNode = new Node(new State(a, a_city, current.state.capacityLeft - this.taskList[i].weight), current.cost + actionCost, current);
-				NodeCompare newNode1 = new NodeCompare(new State(a, a_city, current.state.capacityLeft - this.taskList[i].weight), current.cost + actionCost, current);
-				if (this.compare.get(newNode1) == null || this.compare.get(newNode1) > newNode.cost) {
-					this.compare.put(newNode1, newNode.cost);
+				a[numTasks] = taskList[i].pickupCity.id;
+				actionCost = this.costPerKm * citiesIndex[current.state.stateList[numTasks]].distanceTo(this.taskList[i].pickupCity);
+				State newState = new State(a, current.state.capacityLeft - this.taskList[i].weight);
+				Node newNode = new Node(newState, current.cost + actionCost, current);
+				if (this.compare.get(newState) == null || this.compare.get(newState) > newNode.cost) {
+					this.compare.put(newState, newNode.cost);
 					fs.add(newNode);
 				}
 			} else if (current.state.stateList[i] == 1) {
 				int[] b = current.state.stateList.clone();
-				int b_city;
-
 				b[i] = 2;
-				actionCost = this.costPerKm * citiesIndex[current.state.currentCityId].distanceTo(this.taskList[i].deliveryCity);
-				b_city = taskList[i].deliveryCity.id;
-				Node newNode = new Node(new State(b, b_city, current.state.capacityLeft + this.taskList[i].weight), current.cost + actionCost, current);
-				NodeCompare newNode1 = new NodeCompare(new State(b, b_city, current.state.capacityLeft - this.taskList[i].weight), current.cost + actionCost, current);
-				if (this.compare.get(newNode1) == null || this.compare.get(newNode1) > newNode.cost) {
-					this.compare.put(newNode1, newNode.cost);
+				b[numTasks] = taskList[i].deliveryCity.id;
+				actionCost = this.costPerKm * citiesIndex[current.state.stateList[numTasks]].distanceTo(this.taskList[i].deliveryCity);
+				State newState = new State(b, current.state.capacityLeft + this.taskList[i].weight);
+				Node newNode = new Node(newState, current.cost + actionCost, current);
+				if (this.compare.get(newState) == null || this.compare.get(newState) > newNode.cost) {
+					this.compare.put(newState, newNode.cost);
 					fs.add(newNode);
 				}
 			}
@@ -92,7 +87,7 @@ public class BFS {
 			}
 			//Add new level
 			if (!this.bfs.containsKey(current)) {
-				ArrayList<Node> newLevel = getSuccessor(current);
+				ArrayList<Node> newLevel = (ArrayList<Node>) getSuccessor(current, new ArrayList<>());
 				this.bfs.put(current, current.cost);
 				for (Node n : newLevel) {
 					Q.push(n);
@@ -106,12 +101,10 @@ public class BFS {
 	}
 
 	public Plan computePlan() {
-		executeAlgorithm();
 		Plan plan = new Plan(this.vehicle.getCurrentCity());
 		Node bestNode = findBest();
 		this.path = new ArrayList<Node>();
 
-		//Get rid of the root node
 		while (bestNode != null) {
 			path.add(bestNode);
 			bestNode = bestNode.parent;
@@ -126,12 +119,10 @@ public class BFS {
 			}
 			System.out.println();
 		}
-
 		Collections.reverse(path);
-
 		for (int i = 1; i < path.size(); i++) {
-			City oldCity = this.citiesIndex[path.get(i - 1).state.currentCityId];
-			City newCity = this.citiesIndex[path.get(i).state.currentCityId];
+			City oldCity = this.citiesIndex[path.get(i - 1).state.stateList[numTasks]];
+			City newCity = this.citiesIndex[path.get(i).state.stateList[numTasks]];
 
 			if (!oldCity.equals(newCity)) {
 				for (City city : oldCity.pathTo(newCity)) {
@@ -140,9 +131,9 @@ public class BFS {
 			}
 			//pick and deliver
 			for (int j = 0; j < this.numTasks; j++) {
-				if (path.get(i).state.stateList[j] == 1 & path.get(i - 1).state.stateList[j] == 0)
+				if (path.get(i).state.stateList[j] == 1 && path.get(i - 1).state.stateList[j] == 0)
 					plan.appendPickup(this.taskList[j]);
-				if (path.get(i).state.stateList[j] == 2 & path.get(i - 1).state.stateList[j] == 1)
+				else if (path.get(i).state.stateList[j] == 2 && path.get(i - 1).state.stateList[j] == 1)
 					plan.appendDelivery(this.taskList[j]);
 			}
 		}
