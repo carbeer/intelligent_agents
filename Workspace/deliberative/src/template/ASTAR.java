@@ -61,7 +61,6 @@ public class ASTAR extends BFS {
         for (int y = 0; y < this.taskList.length; y++) {
             if (n.state.stateList[y] == 0) {
                 h = this.taskList[y].pickupCity.distanceTo(this.citiesIndex[n.state.currentCityId]);
-                break;
             }
         }
         return n.cost + h;
@@ -84,7 +83,7 @@ public class ASTAR extends BFS {
 
     public void createASTAR() {
         PriorityQueue<Node> Q = new PriorityQueue<>(NodeComparator);
-        Map<State, Double> C = new HashMap<>();
+        Map<Node, Double> C = new HashMap<>();
         Q.add(this.root);
 
         while (!Q.isEmpty()) {
@@ -95,7 +94,7 @@ public class ASTAR extends BFS {
                 break;
             }
             if (!C.containsKey(n)) {
-                C.put(n.state, n.cost);
+                C.put(n, n.cost);
                 PriorityQueue<Node> successorNodes = getSuccessor(n, new PriorityQueue<>(NodeComparator));
                 Q.addAll(successorNodes);
             }

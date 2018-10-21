@@ -29,7 +29,6 @@ public class BFS {
 		this.compare = new HashMap<NodeCompare, Double>();
 		//root
 		this.root = new Node(new State(new int[taskList.length], this.vehicle.getCurrentCity().id, this.vehicle.capacity()), 0, null);
-		this.root.state.currentCityId = this.vehicle.getCurrentCity().id;
 	}
 
 	ArrayList<Node> getSuccessor(Node current) {
