@@ -20,8 +20,7 @@ import java.util.*;
 public class DeliberativeTemplate implements DeliberativeBehavior {
 
 	enum Algorithm { BFS, ASTAR, NAIVE }
-	int numCities;
-	int numTasks;
+
 	private City[] citiesIndex;
 	private Task[] taskList;
 	
@@ -41,13 +40,14 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		this.topology = topology;
 		this.td = td;
 		this.agent = agent;
-		this.numCities = topology.size();
-		this.citiesIndex = new City[this.numCities];
+		this.citiesIndex = new City[topology.size()];
 		int k = 0;
 		for (City c : topology.cities()) {
 			citiesIndex[k] = c;
 			k++;
 		}
+		setupParams.citiesIndex = citiesIndex;
+
 
 		// initialize the planner
 		int capacity = agent.vehicles().get(0).capacity();
@@ -60,14 +60,15 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 	@Override
 	public Plan plan(Vehicle vehicle, TaskSet tasks) {
 		Plan plan = null;
-	
-		numTasks = tasks.size();
+
+		System.out.println(tasks.toString());
 		taskList = new Task[tasks.size()];
 		int i=0;
 		for (Task t : tasks) {
 			taskList[i] = t;
 			i++;
 		}
+		setupParams.numTasks = taskList.length;
 
 		System.out.printf("Computing the plan with algorithm %s\n", agent.readProperty("algorithm", String.class, "NAIVE").toString());
 		// Compute the plan with the selected algorithm.
@@ -116,15 +117,8 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 
 	@Override
 	public void planCancelled(TaskSet carriedTasks) {
-		
-		if (!carriedTasks.isEmpty()) {
-			// TODO: Handle this for multiple agents
-			// This cannot happen for this simple agent, but typically
-			// you will need to consider the carriedTasks when the next
-			// plan is computed.
-		}
+		// Empty on purpose
 	}
-	//compute all possible states reachable from current state 's'
 }
 
 class State{
@@ -140,8 +134,8 @@ class State{
 	}
 
 	public boolean isFinalState() {
-		for (int i : stateList) {
-			if (i != 2) {
+		for (int i = 0; i < (stateList.length-1); i++) {
+			if (stateList[i] != 2) {
 				return false;
 			}
 		}
@@ -160,11 +154,13 @@ class State{
 		State o = (State) obj;
 		if (!Arrays.equals(this.stateList, o.stateList))
 			return false;
+		if (!(this.capacityLeft == o.capacityLeft))
+			return false;
 		return true;
 	}
 }
 
-class Node {
+class Node implements Comparable<Node> {
 	public Node parent;
 	public State state;
 	public double cost;
@@ -191,6 +187,27 @@ class Node {
 			return false;
 		return true;
 	}
+
+	@Override
+	public int compareTo(Node o) {
+		return (int)(this.getHeuristicCosts() - o.getHeuristicCosts());
+	}
+
+	double getHeuristicCosts() {
+		double h = 0;
+		for (int y = 0; y < setupParams.numTasks; y++) {
+			if (state.stateList[y] == 0) {
+				h = setupParams.citiesIndex[state.stateList[setupParams.numTasks]].distanceTo(setupParams.citiesIndex[state.stateList[setupParams.numTasks]]);
+			}
+		}
+		return cost + h;
+	}
 }
+
+class setupParams {
+	static City[] citiesIndex;
+	static int numTasks;
+}
+
 
 
