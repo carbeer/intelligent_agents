@@ -60,7 +60,7 @@ public class ASTAR extends BFS {
         double h = 0;
         for (int y = 0; y < this.taskList.length; y++) {
             if (n.state.stateList[y] == 0) {
-                h = this.taskList[y].pickupCity.distanceTo(this.citiesIndex[n.state.currentCityId]);
+                h = citiesIndex[n.state.currentCityId].distanceTo(this.citiesIndex[n.state.currentCityId]);
             }
         }
         return n.cost + h;

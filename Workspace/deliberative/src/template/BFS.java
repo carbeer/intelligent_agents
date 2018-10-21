@@ -6,29 +6,38 @@ import logist.plan.Plan;
 import logist.task.Task;
 import logist.topology.Topology.City;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 
 public class BFS {
 
-	public LinkedHashMap<Node, Double> Q;
- 	City[] citiesIndex;
+	public Stack<Node> Q;
+ 	final City[] citiesIndex;
  	Task[] taskList;
 	public HashMap<Node, Double> bfs;
-	public Node root;
+	final public Node root;
 	public Vehicle vehicle;
 	public ArrayList<Node> goalNodes;
 	public ArrayList<Node> path;
 	public HashMap<NodeCompare, Double> compare;
+	final int numCities;
+	final int numTasks;
+	final int costPerKm;
+	final long startTime;
 
 	public BFS(Vehicle vehicle, City[] citiesIndex, Task[] taskList) {
+		startTime = System.nanoTime();
 		this.citiesIndex = citiesIndex;
 		this.taskList = taskList;
 		this.vehicle = vehicle;
 		this.goalNodes = new ArrayList<Node>();
-		this.Q = new LinkedHashMap<Node, Double>();
+		this.Q = new Stack<>();
 		this.compare = new HashMap<NodeCompare, Double>();
-		//root
-		this.root = new Node(new State(new int[taskList.length], this.vehicle.getCurrentCity().id, this.vehicle.capacity()), 0, null);
+		this.numCities = citiesIndex.length;
+		this.numTasks = taskList.length;
+		this.root = new Node(new State(new int[numTasks], this.vehicle.getCurrentCity().id, this.vehicle.capacity()), 0, null);
+		this.costPerKm = vehicle.costPerKm();
+		System.out.println("Timer started");
 	}
 
 	ArrayList<Node> getSuccessor(Node current) {
@@ -41,42 +50,29 @@ public class BFS {
 		double actionCost = 0;
 
 		//simulate actions and create new nodes
-		for (int i = 0; i < taskList.length; i++) {
-
+		for (int i = 0; i < numTasks; i++) {
 			if (current.state.stateList[i] == 0 & this.taskList[i].weight < current.state.capacityLeft) {
 				//pick up task i
 				int[] a = current.state.stateList.clone();
-				int a_city;
-				double deliveredWeight = 0;
-				double pickWeight = 0;
-
 				a[i] = 1;
-				actionCost = this.vehicle.costPerKm() * citiesIndex[current.state.currentCityId].distanceTo(this.taskList[i].pickupCity);
-				a_city = taskList[i].pickupCity.id;
-				Node newNode = new Node(new State(a, a_city, current.state.capacityLeft - this.taskList[i].weight + deliveredWeight - pickWeight), current.cost + actionCost, current);
-				NodeCompare newNode1 = new NodeCompare(new State(a, a_city, current.state.capacityLeft - this.taskList[i].weight + deliveredWeight - pickWeight), current.cost + actionCost, current);
-				if (this.compare.get(newNode1) == null) {
-					fs.add(newNode);
-					this.compare.put(newNode1, newNode.cost);
-				} else if ((Double) this.compare.get(newNode1) > newNode.cost) {
+				int a_city = taskList[i].pickupCity.id;
+				actionCost = this.costPerKm * citiesIndex[current.state.currentCityId].distanceTo(this.taskList[i].pickupCity);
+				Node newNode = new Node(new State(a, a_city, current.state.capacityLeft - this.taskList[i].weight), current.cost + actionCost, current);
+				NodeCompare newNode1 = new NodeCompare(new State(a, a_city, current.state.capacityLeft - this.taskList[i].weight), current.cost + actionCost, current);
+				if (this.compare.get(newNode1) == null || this.compare.get(newNode1) > newNode.cost) {
 					this.compare.put(newNode1, newNode.cost);
 					fs.add(newNode);
 				}
 			} else if (current.state.stateList[i] == 1) {
 				int[] b = current.state.stateList.clone();
 				int b_city;
-				int deliveredWeight = 0;
-				int pickWeight = 0;
 
 				b[i] = 2;
-				actionCost = this.vehicle.costPerKm() * citiesIndex[current.state.currentCityId].distanceTo(this.taskList[i].deliveryCity);
+				actionCost = this.costPerKm * citiesIndex[current.state.currentCityId].distanceTo(this.taskList[i].deliveryCity);
 				b_city = taskList[i].deliveryCity.id;
-				Node newNode = new Node(new State(b, b_city, current.state.capacityLeft + this.taskList[i].weight + deliveredWeight - pickWeight), current.cost + actionCost, current);
-				NodeCompare newNode1 = new NodeCompare(new State(b, b_city, current.state.capacityLeft - this.taskList[i].weight + deliveredWeight - pickWeight), current.cost + actionCost, current);
-				if (this.compare.get(newNode1) == null) {
-					fs.add(newNode);
-					this.compare.put(newNode1, newNode.cost);
-				} else if ((Double) this.compare.get(newNode1) > newNode.cost) {
+				Node newNode = new Node(new State(b, b_city, current.state.capacityLeft + this.taskList[i].weight), current.cost + actionCost, current);
+				NodeCompare newNode1 = new NodeCompare(new State(b, b_city, current.state.capacityLeft - this.taskList[i].weight), current.cost + actionCost, current);
+				if (this.compare.get(newNode1) == null || this.compare.get(newNode1) > newNode.cost) {
 					this.compare.put(newNode1, newNode.cost);
 					fs.add(newNode);
 				}
@@ -86,12 +82,10 @@ public class BFS {
 	}
 
 	private void createBfs() {
-
 		this.bfs = new HashMap<Node, Double>();
-		Q.put(this.root, 0.);
+		Q.push(this.root);
 		while (!(Q.isEmpty())) {
-			Node current = Q.entrySet().iterator().next().getKey();
-			Q.remove(current);
+			Node current = Q.pop();
 			if (current.state.isFinalState()) {
 				this.goalNodes.add(current);
 				continue;
@@ -101,7 +95,7 @@ public class BFS {
 				ArrayList<Node> newLevel = getSuccessor(current);
 				this.bfs.put(current, current.cost);
 				for (Node n : newLevel) {
-					Q.put(n, n.cost);
+					Q.push(n);
 				}
 			}
 		}
@@ -127,7 +121,7 @@ public class BFS {
 		for (Node n : this.path) {
 			System.out.println(n.cost);
 			System.out.println(n.state.capacityLeft);
-			for (int u = 0; u < this.taskList.length; u++) {
+			for (int u = 0; u < this.numTasks; u++) {
 				System.out.print(" " + n.state.stateList[u]);
 			}
 			System.out.println();
@@ -145,13 +139,14 @@ public class BFS {
 				}
 			}
 			//pick and deliver
-			for (int j = 0; j < this.taskList.length; j++) {
+			for (int j = 0; j < this.numTasks; j++) {
 				if (path.get(i).state.stateList[j] == 1 & path.get(i - 1).state.stateList[j] == 0)
 					plan.appendPickup(this.taskList[j]);
 				if (path.get(i).state.stateList[j] == 2 & path.get(i - 1).state.stateList[j] == 1)
 					plan.appendDelivery(this.taskList[j]);
 			}
 		}
+		System.out.printf("Execution took %d seconds\n", TimeUnit.SECONDS.convert(System.nanoTime() - startTime, TimeUnit.NANOSECONDS));
 		return plan;
 	}
 

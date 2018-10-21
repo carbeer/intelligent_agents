@@ -113,6 +113,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		return plan;
 	}
 
+
 	@Override
 	public void planCancelled(TaskSet carriedTasks) {
 		
@@ -168,11 +169,11 @@ class Node {
 
 	@Override
 	public boolean equals(Object obj) {
-		if (this == obj)
-			return true;
 		if (obj == null)
 			return false;
 		Node o = (Node) obj;
+		if (!(this.state.currentCityId == o.state.currentCityId))
+			return false;
 		if (!Arrays.equals(this.state.stateList, o.state.stateList))
 			return false;
 		if (this.cost != o.cost)
@@ -199,11 +200,11 @@ class NodeCompare {
 
 	@Override
 	public boolean equals(Object obj) {
-		if (this == obj)
-			return true;
 		if (obj == null)
 			return false;
 		NodeCompare o = (NodeCompare) obj;
+		if (!(this.state.currentCityId == o.state.currentCityId))
+			return false;
 		if (!Arrays.equals(this.state.stateList, o.state.stateList))
 			return false;
 		return true;
