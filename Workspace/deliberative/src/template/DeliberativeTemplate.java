@@ -55,8 +55,6 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		
 		// Throws IllegalArgumentException if algorithm is unknown
 		algorithm = Algorithm.valueOf(algorithmName.toUpperCase());
-		
-		// ...
 	}
 	
 	@Override
@@ -75,16 +73,10 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		// Compute the plan with the selected algorithm.
 		switch (algorithm) {
 		case ASTAR:
-			// ...
-			try {
-				plan = new ASTAR(vehicle, citiesIndex, taskList).getPlan();
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
+			plan = new ASTAR(vehicle, this.citiesIndex, this.taskList).computePlan();
 			break;
 		case BFS:
-			//create BFS passing vehicle, taskslist, citiesindex
-			plan = new BFS(vehicle, this.citiesIndex, this.taskList, this.numCities ).computePlan();
+			plan = new BFS(vehicle, this.citiesIndex, this.taskList).computePlan();
 			break;
 		case NAIVE:
 			plan = naivePlan(vehicle, tasks);
@@ -144,6 +136,7 @@ class State{
 
 	public State(int[] s, int currentCityId, double capacityLeft) {
 		stateList = s.clone();
+		this.currentCityId = currentCityId;
 		this.capacityLeft = capacityLeft;
 	}
 
@@ -157,7 +150,7 @@ class State{
 	}
 }
 
-class Node{
+class Node {
 	public Node parent;
 	public State state;
 	public double cost;
@@ -168,9 +161,6 @@ class Node{
 		this.parent = parent;
 	}
 
-	public String getId() {
-		return Arrays.toString(state.stateList) + state.currentCityId;
-	}
 	@Override
 	public int hashCode() {
 		return Arrays.hashCode(this.state.stateList);
@@ -191,7 +181,7 @@ class Node{
 	}
 }
 
-class NodeCompare{
+class NodeCompare {
 	public Node parent;
 	public State state;
 	public double cost;
@@ -219,3 +209,4 @@ class NodeCompare{
 		return true;
 	}
 }
+

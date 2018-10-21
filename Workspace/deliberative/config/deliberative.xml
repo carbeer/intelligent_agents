@@ -31,7 +31,7 @@
 				<set color="#0000ff" />
 				<set home="Lausanne" />
 				<set speed="90" />
-				<set capacity="30" />
+				<set capacity="10" />
 				<set cost-per-km="5" />
 			</vehicle>
 		</company>
