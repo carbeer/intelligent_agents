@@ -2,6 +2,7 @@ package template;
 
 import logist.simulation.Vehicle;
 import logist.task.Task;
+import logist.task.TaskSet;
 import logist.topology.Topology;
 
 import java.util.*;
@@ -11,14 +12,14 @@ public class ASTAR extends BFS {
     heuristic heuristicMode;
 
     // Use default heuristic
-    public ASTAR(Vehicle vehicle, Topology.City[] citiesIndex, Task[] taskList) {
-        super(vehicle, citiesIndex, taskList);
+    public ASTAR(Vehicle vehicle, Topology.City[] citiesIndex, TaskSet tasks) {
+        super(vehicle, citiesIndex, tasks);
         this.heuristicMode = heuristic.FIRST;
     }
 
     // Set specific heuristic
-    public ASTAR(Vehicle vehicle, Topology.City[] citiesIndex, Task[] taskList, heuristic heuristicMode) {
-        super(vehicle, citiesIndex, taskList);
+    public ASTAR(Vehicle vehicle, Topology.City[] citiesIndex, heuristic heuristicMode, TaskSet tasks) {
+        super(vehicle, citiesIndex, tasks);
         this.heuristicMode = heuristicMode;
     }
 

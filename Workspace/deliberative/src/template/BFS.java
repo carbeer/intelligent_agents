@@ -4,6 +4,7 @@ package template;
 import logist.simulation.Vehicle;
 import logist.plan.Plan;
 import logist.task.Task;
+import logist.task.TaskSet;
 import logist.topology.Topology.City;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -15,7 +16,7 @@ public class BFS {
  	final City[] citiesIndex;
  	Task[] taskList;
 	public HashMap<Node, Double> bfs;
-	final public Node root;
+	public Node root;
 	public Vehicle vehicle;
 	public ArrayList<Node> goalNodes;
 	public ArrayList<Node> path;
@@ -25,19 +26,18 @@ public class BFS {
 	final int costPerKm;
 	final long startTime;
 
-	public BFS(Vehicle vehicle, City[] citiesIndex, Task[] taskList) {
+	public BFS(Vehicle vehicle, City[] citiesIndex, TaskSet tasks) {
 		startTime = System.nanoTime();
 		System.out.println("Timer started");
 		this.citiesIndex = citiesIndex;
-		this.taskList = taskList;
+		this.taskList = setupParams.taskList;
 		this.vehicle = vehicle;
 		this.goalNodes = new ArrayList<Node>();
 		this.Q = new Stack<>();
 		this.compare = new HashMap<State, Double>();
 		this.numCities = citiesIndex.length;
-		this.numTasks = taskList.length;
-		this.root = new Node(new State(new int[numTasks+1], this.vehicle.capacity()), 0, null);
-		root.state.stateList[numTasks] = this.vehicle.getCurrentCity().id;
+		this.numTasks = setupParams.taskList.length;
+		this.root = getInitialNode(tasks);
 		this.costPerKm = vehicle.costPerKm();
 		executeAlgorithm();
 	}
@@ -100,9 +100,42 @@ public class BFS {
 		createBfs();
 	}
 
+	Node getInitialNode(TaskSet newTasks) {
+		State newState = new State(new int[numTasks+1], this.vehicle.capacity());
+
+		// Initialize everything to N/A
+		for (int i = 0; i < newState.stateList.length; i++) {
+			newState.stateList[i] = 2;
+		}
+		// Set current city
+		newState.stateList[numTasks] = this.vehicle.getCurrentCity().id;
+		// Set states for available tasks
+		for (Task t : newTasks) {
+			newState.stateList[t.id] = 0;
+		}
+		return new Node(newState, 0, null);
+	}
+
+	public void updatePlan(TaskSet newTasks) {
+		this.goalNodes.clear();
+		this.root = getInitialNode(newTasks);
+
+		// Set all currently carried tasks back to state "carrying"
+		for (Task t : vehicle.getCurrentTasks()) {
+			this.root.state.stateList[t.id] = 1;
+			this.root.state.capacityLeft -= t.id;
+		}
+		executeAlgorithm();
+	}
+
+
 	public Plan computePlan() {
 		Plan plan = new Plan(this.vehicle.getCurrentCity());
 		Node bestNode = findBest();
+
+		if (bestNode == null)
+			return plan;
+
 		this.path = new ArrayList<Node>();
 
 		while (bestNode != null) {
@@ -131,10 +164,13 @@ public class BFS {
 			}
 			//pick and deliver
 			for (int j = 0; j < this.numTasks; j++) {
-				if (path.get(i).state.stateList[j] == 1 && path.get(i - 1).state.stateList[j] == 0)
+				if (path.get(i).state.stateList[j] == 1 && path.get(i - 1).state.stateList[j] == 0) {
 					plan.appendPickup(this.taskList[j]);
-				else if (path.get(i).state.stateList[j] == 2 && path.get(i - 1).state.stateList[j] == 1)
+					System.out.println("Want to pick up " + this.taskList[j]);
+				}
+				else if (path.get(i).state.stateList[j] == 2 && path.get(i - 1).state.stateList[j] == 1) {
 					plan.appendDelivery(this.taskList[j]);
+				}
 			}
 		}
 		System.out.printf("Execution took %d seconds\n", TimeUnit.SECONDS.convert(System.nanoTime() - startTime, TimeUnit.NANOSECONDS));
@@ -142,6 +178,8 @@ public class BFS {
 	}
 
 	private Node findBest() {
+		if (goalNodes.isEmpty())
+			return null;
 		double minCost = Double.POSITIVE_INFINITY;
 		Node best = this.goalNodes.get(0);
 		for (Node n : this.goalNodes) {
@@ -153,3 +191,4 @@ public class BFS {
 		return best;
 	}
 }
+

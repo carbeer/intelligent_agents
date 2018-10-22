@@ -11,6 +11,8 @@ import logist.task.TaskSet;
 import logist.topology.Topology;
 import logist.topology.Topology.City;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.lang.reflect.Array;
 import java.util.*;
 /**
@@ -23,7 +25,8 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 
 	private City[] citiesIndex;
 	private Task[] taskList;
-	
+	private boolean firstRun = true;
+
 	/* Environment */
 	Topology topology;
 	TaskDistribution td;
@@ -34,6 +37,8 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 
 	/* the planning class */
 	Algorithm algorithm;
+	ASTAR astar;
+	BFS bfs;
 	
 	@Override
 	public void setup(Topology topology, TaskDistribution td, Agent agent) {
@@ -46,8 +51,6 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 			citiesIndex[k] = c;
 			k++;
 		}
-		setupParams.citiesIndex = citiesIndex;
-
 
 		// initialize the planner
 		int capacity = agent.vehicles().get(0).capacity();
@@ -59,32 +62,44 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 	
 	@Override
 	public Plan plan(Vehicle vehicle, TaskSet tasks) {
-		Plan plan = null;
+		Plan plan;
 
-		System.out.println(tasks.toString());
-		taskList = new Task[tasks.size()];
-		int i=0;
-		for (Task t : tasks) {
-			taskList[i] = t;
-			i++;
+		if (firstRun) {
+			int noTasks = 0;
+			for (Iterator<Task> it = tasks.iterator(); it.hasNext();) {
+				noTasks = it.next().id;
+			}
+			noTasks++;
+			taskList = new Task[noTasks];
+			for (Task t : tasks) {
+				taskList[t.id] = t;
+			}
+			setupParams.taskList = taskList;
 		}
-		setupParams.numTasks = taskList.length;
-
 		System.out.printf("Computing the plan with algorithm %s\n", agent.readProperty("algorithm", String.class, "NAIVE").toString());
 		// Compute the plan with the selected algorithm.
 		switch (algorithm) {
 		case ASTAR:
-			plan = new ASTAR(vehicle, this.citiesIndex, this.taskList).computePlan();
+			if (firstRun)
+				this.astar = new ASTAR(vehicle, this.citiesIndex, tasks);
+			else
+				this.astar.updatePlan(tasks);
+			plan = astar.computePlan();
 			break;
 		case BFS:
-			plan = new BFS(vehicle, this.citiesIndex, this.taskList).computePlan();
+			if (firstRun)
+				this.bfs = new BFS(vehicle, this.citiesIndex, tasks);
+			else
+				this.bfs.updatePlan(tasks);
+			plan = bfs.computePlan();
 			break;
 		case NAIVE:
 			plan = naivePlan(vehicle, tasks);
 			break;
 		default:
 			throw new AssertionError("Should not happen.");
-		}		
+		}
+		firstRun = false;
 		return plan;
 	}
 	
@@ -117,7 +132,7 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 
 	@Override
 	public void planCancelled(TaskSet carriedTasks) {
-		// Empty on purpose
+		this.firstRun = false;
 	}
 }
 
@@ -195,9 +210,9 @@ class Node implements Comparable<Node> {
 
 	double getHeuristicCosts() {
 		double h = 0;
-		for (int y = 0; y < setupParams.numTasks; y++) {
+		for (int y = 0; y < (state.stateList.length-1); y++) {
 			if (state.stateList[y] == 0) {
-				h = setupParams.citiesIndex[state.stateList[setupParams.numTasks]].distanceTo(setupParams.citiesIndex[state.stateList[setupParams.numTasks]]);
+				h = setupParams.taskList[y].pickupCity.distanceTo(setupParams.taskList[y].deliveryCity);
 			}
 		}
 		return cost + h;
@@ -205,8 +220,7 @@ class Node implements Comparable<Node> {
 }
 
 class setupParams {
-	static City[] citiesIndex;
-	static int numTasks;
+	static Task[] taskList;
 }
 
 
