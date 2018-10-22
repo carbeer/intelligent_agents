@@ -166,7 +166,6 @@ public class BFS {
 			for (int j = 0; j < this.numTasks; j++) {
 				if (path.get(i).state.stateList[j] == 1 && path.get(i - 1).state.stateList[j] == 0) {
 					plan.appendPickup(this.taskList[j]);
-					System.out.println("Want to pick up " + this.taskList[j]);
 				}
 				else if (path.get(i).state.stateList[j] == 2 && path.get(i - 1).state.stateList[j] == 1) {
 					plan.appendDelivery(this.taskList[j]);

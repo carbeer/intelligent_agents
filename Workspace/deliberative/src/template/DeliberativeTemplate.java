@@ -33,7 +33,6 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 	
 	/* the properties of the agent */
 	Agent agent;
-	int capacity;
 
 	/* the planning class */
 	Algorithm algorithm;
@@ -53,7 +52,6 @@ public class DeliberativeTemplate implements DeliberativeBehavior {
 		}
 
 		// initialize the planner
-		int capacity = agent.vehicles().get(0).capacity();
 		String algorithmName = agent.readProperty("algorithm", String.class, "ASTAR");
 		
 		// Throws IllegalArgumentException if algorithm is unknown
@@ -213,6 +211,7 @@ class Node implements Comparable<Node> {
 		for (int y = 0; y < (state.stateList.length-1); y++) {
 			if (state.stateList[y] == 0) {
 				h = setupParams.taskList[y].pickupCity.distanceTo(setupParams.taskList[y].deliveryCity);
+				break;
 			}
 		}
 		return cost + h;

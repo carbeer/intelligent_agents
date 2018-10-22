@@ -19,6 +19,10 @@
 		<set class-name="template.DeliberativeTemplate"/>
 		<set algorithm="ASTAR"/>
 	</agent>
-
+	<agent name="deliberative-main">
+		<set class-path="bin/"/>
+		<set class-name="template.DeliberativeTemplate"/>
+		<set algorithm="ASTAR"/>
+	</agent>
 
 </agents>
