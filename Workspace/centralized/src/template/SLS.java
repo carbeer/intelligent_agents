@@ -102,6 +102,7 @@ public class SLS {
 			if (newList != null) {
 				ArrayList<Tupla>[] newSolution = s.clone();
 				newSolution[randomVehicle] = newList;
+				fixCost(newSolution[randomVehicle], randomVehicle);
 				ns.add(newSolution);
 			}
 		}
