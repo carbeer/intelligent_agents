@@ -49,7 +49,7 @@ public class CentralizedTemplate implements CentralizedBehavior {
         }
         
         // the setup method cannot last more than timeout_setup milliseconds
-        timeout_setup = ls.get(LogistSettings.TimeoutKey.SETUP);
+        this.timeout_setup = ls.get(LogistSettings.TimeoutKey.SETUP);
         
         this.citiesIndex = new City[topology.size()];
         int k=0;
@@ -59,7 +59,7 @@ public class CentralizedTemplate implements CentralizedBehavior {
 		}
    
         // the plan method cannot execute more than timeout_plan milliseconds
-        timeout_plan = ls.get(LogistSettings.TimeoutKey.PLAN);
+        this.timeout_plan = ls.get(LogistSettings.TimeoutKey.PLAN);
         
         this.topology = topology;
         this.distribution = distribution;
