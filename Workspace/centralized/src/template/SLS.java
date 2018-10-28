@@ -32,7 +32,8 @@ public class SLS {
 	private City[] citiesIndex;
 	private Task[] taskList;
 	private Vehicle[] vehiclesList;
-	double timeout;
+	private double timeout;
+	private double fixedProb;
 	
 	
 	public SLS (Topology topology, List<Vehicle> vehicles, City[] citiesIndex, Task[] taskList, double timeout) {
@@ -44,6 +45,8 @@ public class SLS {
 		this.numCities = this.citiesIndex.length;
 		this.solutions = (ArrayList<Tupla>[]) new ArrayList[this.numVechicles];
 		this.timeout = timeout;
+		//randomly chosen 
+		this.fixedProb = 0.4;
 		
 		int k=0;
 		for (Vehicle v : vehicles) {
@@ -65,6 +68,8 @@ public class SLS {
 		while (true) {
 			chooseNeighbors(tempSolution, neighbors);
 			localSearch(neighbors, tempSolution);
+			//remove all these neighbors
+			neighbors.clear();
 		}
 		
 		
@@ -80,10 +85,10 @@ public class SLS {
 		
 		for (int i=0; i<this.numTasks; i++) {
 			capacity -= this.taskList[i].weight;
-			solutions[0].add(new Tupla(this.taskList[i], 1, capacity, costkm * currentCity.distanceTo(this.taskList[i].pickupCity)));
+			this.solutions[0].add(new Tupla(this.taskList[i], 1, capacity, costkm * currentCity.distanceTo(this.taskList[i].pickupCity)));
 			capacity += this.taskList[i].weight;
 			currentCity = this.taskList[i].pickupCity;
-			solutions[0].add(new Tupla(this.taskList[i], 2, capacity, costkm * currentCity.distanceTo(this.taskList[i].deliveryCity)));
+			this.solutions[0].add(new Tupla(this.taskList[i], 2, capacity, costkm * currentCity.distanceTo(this.taskList[i].deliveryCity)));
 			currentCity = this.taskList[i].deliveryCity;
 		}
 	}
@@ -93,23 +98,24 @@ public class SLS {
 		int randomVehicle = rand.nextInt(this.numVechicles);
 		int a1;
 		int a2;
-		//Change order in 
+		//Change order in randomVehicle
 		//s.length is always even (one pickup one delivery for every task)
-		for (int i=0; i < s.length / 2; i++ ) {
-			a1 = rand.nextInt(s.length);
-			a2 = rand.nextInt(s.length);
+		for (int i=0; i < s[randomVehicle].size() / 2; i++ ) {
+			a1 = rand.nextInt(s[randomVehicle].size());
+			a2 = rand.nextInt(s[randomVehicle].size());
 			ArrayList<Tupla> newList = swap(randomVehicle, a1, a2, s[randomVehicle]);
 			if (newList != null) {
+				//if it is allowed, I generate new solution changing the plan for randomVehicle
 				ArrayList<Tupla>[] newSolution = s.clone();
 				newSolution[randomVehicle] = newList;
+				//fix the cumulative cost of that list
 				fixCost(newSolution[randomVehicle], randomVehicle);
-				ns.add(newSolution);
+				if (!ns.contains(newSolution)) ns.add(newSolution);
 			}
 		}
-		
 		//Change tasks among vehicles (to choose how many)
-		int howMany = 2;
-		//it is always allowed as adding a sequential action does not affect previous capacity
+		int howMany = 10;
+		//it is always allowed 
 		for (int i=0; i<howMany; i++) {
 			a1 = rand.nextInt(this.numVechicles);
 			a2 = rand.nextInt(this.numVechicles);
@@ -118,7 +124,7 @@ public class SLS {
 			if (s[a1].size() > 0) {
 				//it is always allowed as adding a sequential action does not affect previous capacity
 				changeVehicle(a1, a2, newSolution, rand);
-				ns.add(newSolution);
+				if (!ns.contains(newSolution)) ns.add(newSolution);
 			}
 			
 			
@@ -187,6 +193,7 @@ public class SLS {
 			//update capacity 
 			if(p.get(j).action == 1) {
 				p.get(j).capacityLeft = capacityLeft - p.get(j).task.weight;
+				//if at some points I violate constraints
 				if (capacityLeft <0) return false;					
 			}
 			else {
@@ -225,7 +232,27 @@ public class SLS {
 	
 	
 	
-	private void localSearch(Set<ArrayList<Tupla>[]> ns, ArrayList<Tupla>[] ts) {};
+	private void localSearch(Set<ArrayList<Tupla>[]> ns, ArrayList<Tupla>[] ts) {
+		//just to initialize 
+		ArrayList<Tupla>[] best = ts;
+		double bestCost = Double.POSITIVE_INFINITY;
+		double newCost;
+
+		//for sure best will an element of ns given the positive_infinity
+		for (ArrayList<Tupla>[] s : ns) {
+			newCost = computeCost(s);
+			if (newCost < bestCost) {
+				best = s;
+				bestCost = newCost;
+			}
+		}
+		if (bestCost < computeCost(ts)) ts = best;
+		else {
+			Random rand = new Random();
+			double p = rand.nextDouble();
+			if (p < this.fixedProb) ts = best;
+		}
+	}
 	
 	private class Tupla{
 		public Task task;
