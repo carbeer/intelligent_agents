@@ -29,19 +29,17 @@ public class SLS {
 	int numTasks;
 	int numVechicles;
 	int numCities;
-	private City[] citiesIndex;
 	private Task[] taskList;
 	private Vehicle[] vehiclesList;
 	double timeout;
 	
 	
-	public SLS (Topology topology, List<Vehicle> vehicles, City[] citiesIndex, Task[] taskList, double timeout) {
-		this.citiesIndex = citiesIndex;
+	public SLS (Topology topology, List<Vehicle> vehicles, Task[] taskList, double timeout) {
 		this.taskList = taskList;
 		this.vehiclesList = new Vehicle[this.numVechicles];
 		this.numVechicles = vehicles.size();
 		this.numTasks = this.taskList.length;
-		this.numCities = this.citiesIndex.length;
+		this.numCities = topology.size();
 		this.solutions = (ArrayList<Tupla>[]) new ArrayList[this.numVechicles];
 		this.timeout = timeout;
 		
@@ -50,15 +48,11 @@ public class SLS {
 			this.vehiclesList[k] = v;
 			k++;
 		}
-		
 		search();
-		
 	}
 	
 	private void search() {
-		//double start = System.nanoTime();
 		Set<ArrayList<Tupla>[]> neighbors = new HashSet<>();
-		//(ArrayList<Tupla>[]) new ArrayList[this.numVechicles]; 
 		initialSolution();
 		ArrayList<Tupla>[] tempSolution = this.solutions.clone();
 		
@@ -66,11 +60,40 @@ public class SLS {
 			chooseNeighbors(tempSolution, neighbors);
 			localSearch(neighbors, tempSolution);
 		}
-		
-		
-		
 	}
-	
+
+	private List<Plan> computePlans() {
+		List<Plan> plans = new ArrayList<Plan>();
+		int i = 0;
+		for (ArrayList<Tupla> tupleList : solutions) {
+			City currentCity = vehiclesList[i].getCurrentCity();
+			Plan plan = Plan.EMPTY;
+			for (Tupla tuple : tupleList) {
+				switch (tuple.action) {
+					// Pickup task
+					case 1:
+						for (City c : currentCity.pathTo(tuple.task.pickupCity)) {
+							plan.appendMove(c);
+						}
+						plan.appendPickup(tuple.task);
+						currentCity = tuple.task.pickupCity;
+						break;
+					// Deliver task
+					case 2:
+						for (City c : currentCity.pathTo(tuple.task.deliveryCity)) {
+							plan.appendMove(c);
+						}
+						plan.appendDelivery(tuple.task);
+						currentCity = tuple.task.deliveryCity;
+						break;
+				}
+			}
+			i++;
+			plans.add(plan);
+		}
+		return plans;
+	}
+
 	private void initialSolution() {
 		//TO be optimized
 		//at least there is one vehicle, give it sequentially all tasks
@@ -79,15 +102,22 @@ public class SLS {
 		double costkm = this.vehiclesList[0].costPerKm();
 		
 		for (int i=0; i<this.numTasks; i++) {
-			capacity -= this.taskList[i].weight;
+			// Pickup task
 			solutions[0].add(new Tupla(this.taskList[i], 1, capacity, costkm * currentCity.distanceTo(this.taskList[i].pickupCity)));
-			capacity += this.taskList[i].weight;
+			capacity -= this.taskList[i].weight;
 			currentCity = this.taskList[i].pickupCity;
+			// Deliver task right away
 			solutions[0].add(new Tupla(this.taskList[i], 2, capacity, costkm * currentCity.distanceTo(this.taskList[i].deliveryCity)));
+			capacity += this.taskList[i].weight;
 			currentCity = this.taskList[i].deliveryCity;
 		}
 	}
-	
+
+	/**
+	 *
+	 * @param s
+	 * @param ns
+	 */
 	private void chooseNeighbors(ArrayList<Tupla>[] s, Set<ArrayList<Tupla>[]> ns) {
 		Random rand = new Random();
 		int randomVehicle = rand.nextInt(this.numVechicles);
@@ -120,8 +150,6 @@ public class SLS {
 				changeVehicle(a1, a2, newSolution, rand);
 				ns.add(newSolution);
 			}
-			
-			
 		}
 	}
 	
@@ -150,10 +178,16 @@ public class SLS {
 		s[v2].add(deliverEntry);
 		fixCost(s[v1], v1);
 		fixCost(s[v2], v2);
-		
-		
 	}
-	
+
+	/**
+	 *
+	 * @param v Current vehicle
+	 * @param a1 Action 1
+	 * @param a2 Action 2
+	 * @param vPlan Plan of the vehicle
+	 * @return
+	 */
 	private ArrayList<Tupla> swap(int v, int a1, int a2, ArrayList<Tupla> vPlan ) {
 		ArrayList<Tupla> neighbor = (ArrayList<Tupla>) vPlan.clone();
 		//swap elements
@@ -165,22 +199,18 @@ public class SLS {
 			return neighbor;
 		}
 		return null;
-		
 	}
 	 
 	private boolean checkSwap(ArrayList<Tupla> p, int a, double vehicleCapacity) {
 		//check logical order
 		if (p.get(a).action == 1) {
-			
 			//check if delivered is first than new pick up position (just if it has moved forward)
-			for (int i=0; i <a; i++ ) if (p.get(i).task.equals(p.get(a).task))return false;			
-			
+			for (int i=0; i <a; i++ ) if (p.get(i).task.equals(p.get(a).task))return false;
 		}
 		else {
 			//check if picked up after new delivery
 			for (int i=a+1; i < p.size(); i++) if (p.get(i).task.equals(p.get(a).task)) return false;		
 		}
-		
 		//given that's logically correct, check for capacity constraints and update capacity
 		double capacityLeft = vehicleCapacity;
 		for (int j = 0; j < p.size(); j++ ) {
@@ -192,8 +222,7 @@ public class SLS {
 			else {
 				p.get(j).capacityLeft = capacityLeft + p.get(j).task.weight;
 			}
-			capacityLeft= p.get(j).capacityLeft;
-			
+			capacityLeft = p.get(j).capacityLeft;
 		}
 		return true;
 	}
@@ -222,11 +251,9 @@ public class SLS {
 		}
 		return cost;
 	}
-	
-	
-	
+
 	private void localSearch(Set<ArrayList<Tupla>[]> ns, ArrayList<Tupla>[] ts) {};
-	
+
 	private class Tupla{
 		public Task task;
 		public int action;
