@@ -66,7 +66,7 @@ public class SLS {
 		initialSolution();
 		ArrayList<Tupla>[] tempSolution = cloneSolution(this.solutions);
 		int o =0;
-		while (o < 100000) {
+		while (o < 1000000) {
 			chooseNeighbors(tempSolution, neighbors);
 			localSearch(neighbors, tempSolution);
 			//remove all these neighbors
@@ -130,12 +130,13 @@ public class SLS {
 		
 		for (int i=0; i<this.numTasks; i++) {
 			capacity -= this.taskList[i].weight;
-			this.solutions[0].add(new Tupla(this.taskList[i], 1, capacity, costkm * currentCity.distanceTo(this.taskList[i].pickupCity)));
+			this.solutions[0].add(new Tupla(this.taskList[i], 1, capacity, 0));
 			capacity += this.taskList[i].weight;
 			currentCity = this.taskList[i].pickupCity;
-			this.solutions[0].add(new Tupla(this.taskList[i], 2, capacity, costkm * currentCity.distanceTo(this.taskList[i].deliveryCity)));
+			this.solutions[0].add(new Tupla(this.taskList[i], 2, capacity, 0));
 			currentCity = this.taskList[i].deliveryCity;
 		}
+		fixCost(this.solutions[0], 0);
 	}
 
 	/**
@@ -177,7 +178,7 @@ public class SLS {
 		//it is always allowed 
 
 		for (int i=0; i < howMany; i++) {
-			v1 = 0;
+			v1 = rand.nextInt(this.numVechicles);
 			v2 = rand.nextInt(this.numVechicles);
 			//You can always add at the end with the new capacity
 			ArrayList<Tupla>[] newSolution = s.clone();
@@ -337,22 +338,17 @@ public class SLS {
 				bestCost = newCost;
 			}
 		}
-		if (bestCost < computeCost(ts)) {
+		if (computeCost(best) < computeCost(ts)) {
 			ts = best;
-			if (bestCost < computeCost(this.solutions)) this.solutions = best;
+			if (computeCost(best) < computeCost(this.solutions)) this.solutions = best;
 		}
 		else {
 			Random rand = new Random();
 			double p = rand.nextDouble();
 			if (p < this.fixedProb) ts = best;
 		}
-		System.out.println(computeCost(best));
-		for (int y=0; y < best.length; y++) {
-			for (Tupla t : best[y]) {
-				System.out.print(t.task.id + "   ");
-			}
-			System.out.println();
-		}
+		
+		
 		
 	
 	}
