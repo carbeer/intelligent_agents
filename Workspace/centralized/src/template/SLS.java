@@ -1,5 +1,6 @@
 package template;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Set;
 import java.util.HashSet;
@@ -43,7 +44,7 @@ public class SLS {
 		this.numCities = topology.size();
 		this.solutions = (ArrayList<Tupla>[]) new ArrayList[this.numVechicles];
 		this.timeout = timeout;
-		//randomly chosen 
+		//randomly chosen
 		this.fixedProb = 0.4;
 		
 		int k=0;
@@ -67,12 +68,12 @@ public class SLS {
 		}
 	}
 
-	private List<Plan> computePlans() {
+	public List<Plan> computePlans() {
 		List<Plan> plans = new ArrayList<Plan>();
 		int i = 0;
 		for (ArrayList<Tupla> tupleList : solutions) {
 			City currentCity = vehiclesList[i].getCurrentCity();
-			Plan plan = Plan.EMPTY;
+			Plan plan = new Plan(currentCity);
 			for (Tupla tuple : tupleList) {
 				switch (tuple.action) {
 					// Pickup task
@@ -99,8 +100,11 @@ public class SLS {
 		return plans;
 	}
 
+	/**
+	 * Naive initial assignment of all tasks to one vehicle
+	 * TODO: Optimize
+	 */
 	private void initialSolution() {
-		//TO be optimized
 		//at least there is one vehicle, give it sequentially all tasks
 		int capacity = this.vehiclesList[0].capacity();
 		City currentCity = this.vehiclesList[0].getCurrentCity();
@@ -118,78 +122,92 @@ public class SLS {
 
 	/**
 	 *
-	 * @param s
-	 * @param ns
+	 * @param s Currently best list of tuples
+	 * @param ns Set of possible neighbor solutions
 	 */
 	private void chooseNeighbors(ArrayList<Tupla>[] s, Set<ArrayList<Tupla>[]> ns) {
 		Random rand = new Random();
 		int randomVehicle = rand.nextInt(this.numVechicles);
 		int a1;
 		int a2;
-		//Change order in randomVehicle
-		//s.length is always even (one pickup one delivery for every task)
+		// Change order in the plan of randomVehicle
+		// s.length is always even (one pickup one delivery for every task)
 		for (int i=0; i < s[randomVehicle].size() / 2; i++ ) {
 			a1 = rand.nextInt(s[randomVehicle].size());
 			a2 = rand.nextInt(s[randomVehicle].size());
+			// Try to swap the two actions
 			ArrayList<Tupla> newList = swap(randomVehicle, a1, a2, s[randomVehicle]);
 			if (newList != null) {
-				//if it is allowed, I generate new solution changing the plan for randomVehicle
+				// If it is allowed, I generate new solution changing the plan for randomVehicle
 				ArrayList<Tupla>[] newSolution = s.clone();
 				newSolution[randomVehicle] = newList;
 				//fix the cumulative cost of that list
 				fixCost(newSolution[randomVehicle], randomVehicle);
+				// TODO: Do we need to implement something to make contains work properly?
 				if (!ns.contains(newSolution)) ns.add(newSolution);
 			}
 		}
-		//Change tasks among vehicles (to choose how many)
+
+		// Change tasks among vehicles (to choose how many)
 		int howMany = 10;
+		int v1;
+		int v2;
 		//it is always allowed 
-		for (int i=0; i<howMany; i++) {
-			a1 = rand.nextInt(this.numVechicles);
-			a2 = rand.nextInt(this.numVechicles);
+		for (int i=0; i < howMany; i++) {
+			v1 = rand.nextInt(this.numVechicles);
+			v2 = rand.nextInt(this.numVechicles);
 			//You can always add at the end with the new capacity
 			ArrayList<Tupla>[] newSolution = s.clone();
-			if (s[a1].size() > 0) {
+			if (s[v1].size() > 0 && vehiclesList[v2].capacity() >= s[v1].get(0).task.weight) {
 				//it is always allowed as adding a sequential action does not affect previous capacity
-				changeVehicle(a1, a2, newSolution, rand);
-				if (!ns.contains(newSolution)) ns.add(newSolution);
+				newSolution = changeVehicle(v1, v2, newSolution);
+				if (!ns.contains(newSolution))
+					ns.add(newSolution);
 			}
 		}
 	}
-	
-	private void changeVehicle(int v1, int v2, ArrayList<Tupla>[] s, Random rand) {
+
+	/**
+	 * Removes the first task of vehicle v1 and appends it to the plan of v2.
+	 * @param v1 index of vehicle1
+	 * @param v2 index of vehicle2
+	 * @param s the currently best plan
+	 */
+	private ArrayList<Tupla>[] changeVehicle(int v1, int v2, ArrayList<Tupla>[] s) {
 		//take the first(for sure the first action is a pickup  
 		//Remove and shift (can be random then)
 		Tupla entry = s[v1].remove(0);
 		int i=0;
-		boolean find = false;
 		//remove the delivery action and rearrange the capacities
-		while (!find) {
+		while (true) {
 			//remove this element does not affect subsequent actions as the weight of the task was removed anyway
 			if (s[v1].get(i).task == entry.task) { 
 				s[v1].remove(i);
-				find = true;
+				break;
 			}
-			//if we've not found the delivery jet, just add the weight to every capacity
+			//if we've not found the delivery yet, just add the weight to every capacity
 			else {
 				s[v1].get(i).capacityLeft += entry.task.weight;
 			}
 		}
 		//added at the end, no need to iterate for capacity (at the end full v2 capacity)
 		entry.capacityLeft = this.vehiclesList[v2].capacity() - entry.task.weight;
-		Tupla deliverEntry = new Tupla (entry.task, 2, this.vehiclesList[v2].capacity(), 0.);
+		Tupla deliverEntry = new Tupla(entry.task, 2, this.vehiclesList[v2].capacity(), 0.);
 		s[v2].add(entry);
 		s[v2].add(deliverEntry);
-		fixCost(s[v1], v1);
-		fixCost(s[v2], v2);
+		s[v1] = fixCost(s[v1], v1);
+		s[v2] = fixCost(s[v2], v2);
+		return s;
 	}
 
 	/**
+	 * Try to swap two actions in the plan of one vehicle.
+	 * Returns null if it's not possible to swap the actions.
 	 *
 	 * @param v Current vehicle
 	 * @param a1 Action 1
 	 * @param a2 Action 2
-	 * @param vPlan Plan of the vehicle
+	 * @param vPlan Currently best plan of vehicle v
 	 * @return
 	 */
 	private ArrayList<Tupla> swap(int v, int a1, int a2, ArrayList<Tupla> vPlan ) {
@@ -204,18 +222,27 @@ public class SLS {
 		}
 		return null;
 	}
-	 
+
+	/**
+	 * Determines whether a swap is valid and doesn't violate any constraints
+	 * @param p The plan that is to be validated
+	 * @param a The action that has been changed
+	 * @param vehicleCapacity The maximum capacity of the vehicle that is supposed to execute the plan
+	 * @return boolean value, indicating whether the swap is valid or not.
+	 */
 	private boolean checkSwap(ArrayList<Tupla> p, int a, double vehicleCapacity) {
-		//check logical order
+		// Check logical order - no delivery before pickup, no pickup after delivery
 		if (p.get(a).action == 1) {
-			//check if delivered is first than new pick up position (just if it has moved forward)
-			for (int i=0; i <a; i++ ) if (p.get(i).task.equals(p.get(a).task))return false;
+			for (int i=0; i < a; i++ )
+				if (p.get(i).task.equals(p.get(a).task))
+					return false;
 		}
 		else {
-			//check if picked up after new delivery
-			for (int i=a+1; i < p.size(); i++) if (p.get(i).task.equals(p.get(a).task)) return false;		
+			for (int i=a+1; i < p.size(); i++)
+				if (p.get(i).task.equals(p.get(a).task))
+					return false;
 		}
-		//given that's logically correct, check for capacity constraints and update capacity
+		// Check for capacity constraints and update capacity
 		double capacityLeft = vehicleCapacity;
 		for (int j = 0; j < p.size(); j++ ) {
 			//update capacity 
@@ -231,8 +258,13 @@ public class SLS {
 		}
 		return true;
 	}
-	
-	private void fixCost (ArrayList<Tupla> list, int v) {
+
+	/**
+	 *
+	 * @param list
+	 * @param v
+	 */
+	private ArrayList<Tupla> fixCost (ArrayList<Tupla> list, int v) {
 		City currentCity = this.vehiclesList[v].getCurrentCity();
 		list.get(0).cost = currentCity.distanceTo(list.get(0).task.pickupCity);
 		currentCity = list.get(0).task.pickupCity;
@@ -247,8 +279,14 @@ public class SLS {
 				currentCity = list.get(i).task.deliveryCity;
 			}
 		}
+		return list;
 	}
-	//Compute cost of a solution
+
+	/**
+	 *
+	 * @param s Solution to be computed
+	 * @return Cost of a solution
+	 */
 	private double computeCost (ArrayList<Tupla>[] s) {
 		double cost =0;
 		for (int i=0; i < s.length; i++) {
