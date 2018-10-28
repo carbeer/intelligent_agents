@@ -68,8 +68,9 @@ public class CentralizedTemplate implements CentralizedBehavior {
 
     @Override
     public List<Plan> plan(List<Vehicle> vehicles, TaskSet tasks) {
-        long time_start = System.currentTimeMillis();
         
+        
+        taskList = new Task[tasks.size()];
         for (Task t : tasks) {
 			taskList[t.id] = t;
 		}
@@ -86,6 +87,10 @@ public class CentralizedTemplate implements CentralizedBehavior {
             plans.add(Plan.EMPTY);
         }
         
+        
+        long time_start = System.currentTimeMillis();
+        SLS sls = new SLS(this.topology, vehicles, taskList, this.timeout_plan );
+        plans = sls.computePlans();
         long time_end = System.currentTimeMillis();
         long duration = time_end - time_start;
         System.out.println("The plan was generated in "+duration+" milliseconds.");

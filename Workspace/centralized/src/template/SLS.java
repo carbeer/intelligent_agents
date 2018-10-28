@@ -37,14 +37,18 @@ public class SLS {
 	
 	public SLS (Topology topology, List<Vehicle> vehicles, Task[] taskList, double timeout) {
 		this.taskList = taskList;
-		this.vehiclesList = new Vehicle[this.numVechicles];
 		this.numVechicles = vehicles.size();
+		this.vehiclesList = new Vehicle[this.numVechicles];
+		
 		this.numTasks = this.taskList.length;
 		this.numCities = topology.size();
 		this.solutions = (ArrayList<Tupla>[]) new ArrayList[this.numVechicles];
+		for (int i=0; i<this.solutions.length; i++) {
+			this.solutions[i] = new ArrayList<Tupla>();
+		}
 		this.timeout = timeout;
 		//randomly chosen 
-		this.fixedProb = 0.4;
+		this.fixedProb = 0.001;
 		
 		int k=0;
 		for (Vehicle v : vehicles) {
@@ -58,21 +62,32 @@ public class SLS {
 		Set<ArrayList<Tupla>[]> neighbors = new HashSet<>();
 		initialSolution();
 		ArrayList<Tupla>[] tempSolution = this.solutions.clone();
-		
-		while (true) {
+		int o =0;
+		while (o < 1000) {
 			chooseNeighbors(tempSolution, neighbors);
 			localSearch(neighbors, tempSolution);
 			//remove all these neighbors
 			neighbors.clear();
+			o++;
+			if (0 % 10000 == 0) {
+				System.out.println(computeCost(this.solutions));
+			}
 		}
+		for (int y=0; y < this.solutions.length; y++) {
+			for (Tupla t : this.solutions[y]) {
+				System.out.print(t.task.id + "   ");
+			}
+			System.out.println();
+		}
+		
 	}
 
-	private List<Plan> computePlans() {
+	public List<Plan> computePlans() {
 		List<Plan> plans = new ArrayList<Plan>();
 		int i = 0;
 		for (ArrayList<Tupla> tupleList : solutions) {
 			City currentCity = vehiclesList[i].getCurrentCity();
-			Plan plan = Plan.EMPTY;
+			Plan plan = new Plan(currentCity);
 			for (Tupla tuple : tupleList) {
 				switch (tuple.action) {
 					// Pickup task
@@ -142,7 +157,7 @@ public class SLS {
 			}
 		}
 		//Change tasks among vehicles (to choose how many)
-		int howMany = 10;
+		int howMany = 100;
 		//it is always allowed 
 		for (int i=0; i<howMany; i++) {
 			a1 = rand.nextInt(this.numVechicles);
@@ -180,8 +195,8 @@ public class SLS {
 		Tupla deliverEntry = new Tupla (entry.task, 2, this.vehiclesList[v2].capacity(), 0.);
 		s[v2].add(entry);
 		s[v2].add(deliverEntry);
-		fixCost(s[v1], v1);
-		fixCost(s[v2], v2);
+		if (s[v1].size() >0) fixCost(s[v1], v1);
+		if (s[v2].size() >0) fixCost(s[v2], v2);
 	}
 
 	/**
@@ -252,7 +267,7 @@ public class SLS {
 	private double computeCost (ArrayList<Tupla>[] s) {
 		double cost =0;
 		for (int i=0; i < s.length; i++) {
-			cost += s[i].get(s[i].size() -1).cost;
+			if(s[i].size() >0) cost += s[i].get(s[i].size() -1).cost;
 		}
 		return cost;
 	}
@@ -271,7 +286,10 @@ public class SLS {
 				bestCost = newCost;
 			}
 		}
-		if (bestCost < computeCost(ts)) ts = best;
+		if (bestCost < computeCost(ts)) {
+			ts = best;
+			if (bestCost < computeCost(this.solutions)) this.solutions = ts.clone();
+		}
 		else {
 			Random rand = new Random();
 			double p = rand.nextDouble();
