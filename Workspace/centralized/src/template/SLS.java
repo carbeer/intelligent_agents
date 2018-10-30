@@ -4,6 +4,7 @@ import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 import logist.LogistSettings;
@@ -26,7 +27,7 @@ import java.util.ArrayList;
 
 public class SLS {
 	
-	ArrayList<Tupla>[] solutions;
+	Solution solutions;
 	int numTasks;
 	int numVechicles;
 	int numCities;
@@ -34,7 +35,8 @@ public class SLS {
 	private Vehicle[] vehiclesList;
 	private double timeout;
 	private double fixedProb;
-	
+	private int stuck;
+	static final int jumpWhen = 25;
 	
 	public SLS (Topology topology, List<Vehicle> vehicles, Task[] taskList, double timeout) {
 		this.taskList = taskList;
@@ -43,16 +45,13 @@ public class SLS {
 		
 		this.numTasks = this.taskList.length;
 		this.numCities = topology.size();
-		this.solutions = (ArrayList<Tupla>[]) new ArrayList[this.numVechicles];
-		for (int i=0; i<this.solutions.length; i++) {
-			this.solutions[i] = new ArrayList<Tupla>();
-		}
+		this.solutions = new Solution(this.numVechicles);
+		this.stuck = 0;
 		this.timeout = timeout;
 		//randomly chosen 
-
-		this.fixedProb = 0.5;
 		
-
+		this.fixedProb = 0.5;
+	
 		int k=0;
 		for (Vehicle v : vehicles) {
 			this.vehiclesList[k] = v;
@@ -62,34 +61,33 @@ public class SLS {
 	}
 	
 	private void search() {
-		Set<ArrayList<Tupla>[]> neighbors = new HashSet<>();
+		Set<Solution> neighbors = new HashSet<>();
 		initialSolution();
-		ArrayList<Tupla>[] tempSolution = cloneSolution(this.solutions);
-		int o =0;
-		while (o < 1000000) {
+		Solution tempSolution = new Solution(cloneSolution(this.solutions.array));
+		System.out.println("Output initial solution " );
+		this.solutions.print(computeCost(this.solutions.array));
+		//Counter 
+		int i =0;
+		while (i < 1000) {
+			
 			chooseNeighbors(tempSolution, neighbors);
-			localSearch(neighbors, tempSolution);
+			localSearch(neighbors, tempSolution, i);
+			
 			//remove all these neighbors
 			neighbors.clear();
-			o++;
-			if (o % 10000 == 0) {
-				System.out.println(computeCost(this.solutions));
-				for (int y=0; y < this.solutions.length; y++) {
-					for (Tupla t : this.solutions[y]) {
-						System.out.print(t.task.id + "   ");
-					}
-					System.out.println();
-				}
-			}
+			i++;
+			
 		}
-		
+		//print final solution
+		System.out.println("Final Solution :" );
+		this.solutions.print(computeCost(this.solutions.array));
 		
 	}
 
 	public List<Plan> computePlans() {
 		List<Plan> plans = new ArrayList<Plan>();
 		int i = 0;
-		for (ArrayList<Tupla> tupleList : solutions) {
+		for (ArrayList<Tupla> tupleList : solutions.array) {
 			City currentCity = vehiclesList[i].getCurrentCity();
 			Plan plan = new Plan(currentCity);
 			for (Tupla tuple : tupleList) {
@@ -123,20 +121,21 @@ public class SLS {
 	 * TODO: Optimize
 	 */
 	private void initialSolution() {
-		//at least there is one vehicle, give it sequentially all tasks
-		int capacity = this.vehiclesList[0].capacity();
-		City currentCity = this.vehiclesList[0].getCurrentCity();
-		double costkm = this.vehiclesList[0].costPerKm();
 		
-		for (int i=0; i<this.numTasks; i++) {
-			capacity -= this.taskList[i].weight;
-			this.solutions[0].add(new Tupla(this.taskList[i], 1, capacity, 0));
-			capacity += this.taskList[i].weight;
-			currentCity = this.taskList[i].pickupCity;
-			this.solutions[0].add(new Tupla(this.taskList[i], 2, capacity, 0));
-			currentCity = this.taskList[i].deliveryCity;
+		//Distribute tasks among vehicles 
+		int u=0;
+		for (int i=0; i<this.numVechicles; i++) {
+			for (int j=0; j<(int) (this.numTasks / this.numVechicles) + this.numTasks % this.numVechicles; j++ ) {
+				if (u==this.numTasks) break;
+				this.solutions.array[i].add(new Tupla(this.taskList[u], 1, this.vehiclesList[i].capacity() - this.taskList[u].weight, 0));
+				this.solutions.array[i].add(new Tupla(this.taskList[u], 2, this.vehiclesList[i].capacity() + this.taskList[u].weight, 0));				
+				u++;
+			}
 		}
-		fixCost(this.solutions[0], 0);
+		
+		//fix cost of the solution
+		for (int i=0; i<this.solutions.array.length; i++) if (this.solutions.array[i].size()>0) fixCost(this.solutions.array[i], 0);
+		
 	}
 
 	/**
@@ -144,52 +143,66 @@ public class SLS {
 	 * @param s Currently best list of tuples
 	 * @param ns Set of possible neighbor solutions
 	 */
-	private void chooseNeighbors(ArrayList<Tupla>[] s, Set<ArrayList<Tupla>[]> ns) {
+	private void chooseNeighbors(Solution s, Set<Solution> ns) {
 		Random rand = new Random();
 		int randomVehicle = rand.nextInt(this.numVechicles);
 		int a1;
 		int a2;
-		// Change order in the plan of randomVehicle
-		// s.length is always even (one pickup one delivery for every task)
-		for (int i=0; i < s[randomVehicle].size() / 2; i++ ) {
-			a1 = rand.nextInt(s[randomVehicle].size());
-			a2 = rand.nextInt(s[randomVehicle].size());
-			// Try to swap the two actions
-			ArrayList<Tupla> newList = swap(randomVehicle, a1, a2, s[randomVehicle]);
-			if (newList != null) {
-
-				//if it is allowed, I generate new solution changing the plan for randomVehicle
-				ArrayList<Tupla>[] newSolution = cloneSolution(s);
-
-				newSolution[randomVehicle] = newList;
-				//fix the cumulative cost of that list
-				fixCost(newSolution[randomVehicle], randomVehicle);
-				// TODO: Do we need to implement something to make contains work properly?
-				if (!ns.contains(newSolution)) ns.add(newSolution);
-			}
 	
-		}
-
 		// Change tasks among vehicles (to choose how many)
-		int howMany = 100;
+		int howMany = 50;
 		int v1;
 		int v2;
 
 		//it is always allowed 
+		v1 = rand.nextInt(this.numVechicles);
+		if (s.array[v1].size() >0) {
+			for (int i=0; i < howMany; i++) {
+			
+				v2 = rand.nextInt(this.numVechicles);
+				//You can always add at the end with the new capacity
+				Solution newSolution = new Solution (cloneSolution(s.array));
+				if (s.array[v1].size() > 0 && vehiclesList[v2].capacity() >= s.array[v1].get(0).task.weight) {
 
-		for (int i=0; i < howMany; i++) {
-			v1 = rand.nextInt(this.numVechicles);
-			v2 = rand.nextInt(this.numVechicles);
-			//You can always add at the end with the new capacity
-			ArrayList<Tupla>[] newSolution = s.clone();
-			if (s[v1].size() > 0 && vehiclesList[v2].capacity() >= s[v1].get(0).task.weight) {
-
-				//it is always allowed as adding a sequential action does not affect previous capacity
-				newSolution = changeVehicle(v1, v2, newSolution);
-				if (!ns.contains(newSolution))
-					ns.add(newSolution);
+					//it is always allowed as adding a sequential action does not affect previous capacity
+					changeVehicle(v1, v2, newSolution.array);
+					if (!ns.contains(newSolution))
+						ns.add(newSolution);
+				}
 			}
 		}
+		//change one action
+		
+		int rv = rand.nextInt(this.numVechicles);
+		if (s.array[rv].size() != 0) {
+			for (int i=0; i < s.array[rv].size(); i++ ) {
+				a2 = rand.nextInt(s.array[rv].size());
+				for (int j=0; j < s.array[rv].size(); j++) {
+					a1 = rand.nextInt(s.array[rv].size());
+					// Try to move a2 to a1
+					ArrayList<Tupla> newList = cloneList(s.array[rv]);
+					newList.add(a1, newList.remove(a2));
+						
+					if (checkSwap(newList,a1, (double)this.vehiclesList[rv].capacity()))
+					{
+
+						//if it is allowed, I generate new solution changing the plan for randomVehicle
+						Solution newSolution = new Solution(cloneSolution(s.array));
+
+						newSolution.array[rv] = cloneList(newList);
+						//fix the cumulative cost of that list
+						fixCost(newSolution.array[rv], rv);
+						// TODO: Do we need to implement something to make contains work properly?
+						if (!ns.contains(newSolution)) {
+							ns.add(newSolution);
+								
+						}
+					}
+					
+				}
+			}
+		}
+		System.out.println("How many neighbors ? " + ns.size());
 	}
 
 	/**
@@ -198,11 +211,26 @@ public class SLS {
 	 * @param v2 index of vehicle2
 	 * @param s the currently best plan
 	 */
-	private ArrayList<Tupla>[] changeVehicle(int v1, int v2, ArrayList<Tupla>[] s) {
-		//take the first(for sure the first action is a pickup  
+	private void changeVehicle(int v1, int v2, ArrayList<Tupla>[] s) {
+		//take randomly one task  
 		//Remove and shift (can be random then)
-		Tupla entry = s[v1].remove(0);
-		int i=0;
+		Random rand = new Random();
+		int t = rand.nextInt(s[v1].size() / 2);
+		int y =0;
+		for (int i=0; i<s[v1].size(); i++) {
+			if (s[v1].get(i).action == 1) {
+				if (y==t) {
+					t = i;
+					break;
+				}
+				else {
+					y++;
+				}
+			}
+		}
+		//now t is the index in the list
+		Tupla entry = s[v1].remove(t);
+		int i=t;
 		//remove the delivery action and rearrange the capacities
 		while (true) {
 			//remove this element does not affect subsequent actions as the weight of the task was removed anyway
@@ -224,8 +252,6 @@ public class SLS {
 
 		if (s[v1].size() >0) fixCost(s[v1], v1);
 		if (s[v2].size() >0) fixCost(s[v2], v2);
-		
-		return s;
 
 	}
 
@@ -293,22 +319,22 @@ public class SLS {
 	 * @param list
 	 * @param v
 	 */
-	private ArrayList<Tupla> fixCost (ArrayList<Tupla> list, int v) {
+	private void fixCost (ArrayList<Tupla> list, int v) {
 		City currentCity = this.vehiclesList[v].getCurrentCity();
-		list.get(0).cost = currentCity.distanceTo(list.get(0).task.pickupCity);
+		list.get(0).cost = this.vehiclesList[v].costPerKm() * currentCity.distanceTo(list.get(0).task.pickupCity);
 		currentCity = list.get(0).task.pickupCity;
 		
 		for (int i=1; i<list.size(); i++) {
 			if (list.get(i).action == 1) {
-				list.get(i).cost = list.get(i-1).cost + currentCity.distanceTo(list.get(i).task.pickupCity);
+				list.get(i).cost = list.get(i-1).cost + this.vehiclesList[v].costPerKm() * currentCity.distanceTo(list.get(i).task.pickupCity);
 				currentCity = list.get(i).task.pickupCity;
 			}
 			else {
-				list.get(i).cost = list.get(i-1).cost + currentCity.distanceTo(list.get(i).task.deliveryCity);
+				list.get(i).cost = list.get(i-1).cost + this.vehiclesList[v].costPerKm() * currentCity.distanceTo(list.get(i).task.deliveryCity);
 				currentCity = list.get(i).task.deliveryCity;
 			}
 		}
-		return list;
+		return;
 	}
 
 	/**
@@ -324,34 +350,56 @@ public class SLS {
 		return cost;
 	}
 	
-	private void localSearch(Set<ArrayList<Tupla>[]> ns, ArrayList<Tupla>[] ts) {
+	private void localSearch(Set<Solution> ns, Solution ts, int i) {
 		//just to initialize 
-		ArrayList<Tupla>[] best = cloneSolution(ts);
+		Solution best = new Solution(this.numVechicles);
 		double bestCost = Double.POSITIVE_INFINITY;
 		double newCost;
-
+		Random rand = new Random();
 		//for sure best will an element of ns given the positive_infinity
-		for (ArrayList<Tupla>[] s : ns) {
-			newCost = computeCost(s);
+		
+		for (Solution s : ns) {
+			newCost = computeCost(s.array);
+			if (this.stuck > jumpWhen && rand.nextDouble() < 0.2) {
+				best = s;
+			}
 			if (newCost < bestCost) {
 				best = s;
 				bestCost = newCost;
 			}
 		}
-		if (computeCost(best) < computeCost(ts)) {
-			ts = best;
-			if (computeCost(best) < computeCost(this.solutions)) this.solutions = best;
+
+		if (bestCost < computeCost(ts.array)) {
+			
+			System.out.println("Changed to " + bestCost + " from " + computeCost(ts.array));
+			ts.array = best.array;
+			this.stuck =0;
+			if (bestCost < computeCost(this.solutions.array)) {
+				this.solutions = best;
+			}
+		}
+		else if (stuck > jumpWhen){
+			ts.array = best.array;
 		}
 		else {
-			Random rand = new Random();
+			this.stuck++;
 			double p = rand.nextDouble();
 			if (p < this.fixedProb) ts = best;
 		}
 		
+		System.out.println();
+		ts.print(computeCost(ts.array));
+		
+		try{System.in.read();}
+		catch(Exception e){};
+		System.out.println();
+		System.out.println();
 		
 		
 	
 	}
+	
+	//Utiliy method 
 	private ArrayList<Tupla>[] cloneSolution (ArrayList<Tupla>[] s){
 		ArrayList<Tupla>[] newS = (ArrayList<Tupla>[]) new ArrayList[this.numVechicles];
 		for (int i=0; i<s.length; i++) {
@@ -368,21 +416,4 @@ public class SLS {
 		return newL;
 	}
 
-	private class Tupla{
-		public Task task;
-		public int action;
-		public double capacityLeft;
-		double cost;
-		
-		public Tupla(Task task, int action, double capacityLeft, double cost) {
-			this.task = task;
-			this.action = action;
-			this.capacityLeft = capacityLeft;
-			this.cost = cost;
-		}
-		
-		public Tupla clone () {
-			return new Tupla(this.task, this.action, this.capacityLeft, this.cost);
-		}
-	}
 }
