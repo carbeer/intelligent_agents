@@ -8,6 +8,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 import logist.LogistSettings;
+import java.io.IOException;
 
 import logist.Measures;
 import logist.behavior.AuctionBehavior;
@@ -36,7 +37,8 @@ public class SLS {
 	private double timeout;
 	private double fixedProb;
 	private int stuck;
-	static final int jumpWhen = 25;
+	private int jumpWhen = 20;
+	private int numIter;
 	
 	public SLS (Topology topology, List<Vehicle> vehicles, Task[] taskList, double timeout) {
 		this.taskList = taskList;
@@ -48,9 +50,8 @@ public class SLS {
 		this.solutions = new Solution(this.numVechicles);
 		this.stuck = 0;
 		this.timeout = timeout;
-		//randomly chosen 
-		
-		this.fixedProb = 0.5;
+		this.numIter = 10000;
+		this.fixedProb = 0.8;
 	
 		int k=0;
 		for (Vehicle v : vehicles) {
@@ -68,14 +69,31 @@ public class SLS {
 		this.solutions.print(computeCost(this.solutions.array));
 		//Counter 
 		int i =0;
-		while (i < 1000) {
+		long time_start = System.currentTimeMillis();
+		long time =0;
+		boolean third = false;
+		boolean second = false;
+		while (time < this.timeout * 0.9) {
 			
 			chooseNeighbors(tempSolution, neighbors);
 			localSearch(neighbors, tempSolution, i);
 			
 			//remove all these neighbors
 			neighbors.clear();
-			i++;
+
+			if (!second && time > (this.timeout / 3)  ) {
+				this.fixedProb = 0.6;
+				this.jumpWhen = 50;
+				second = true; 
+				System.out.println(this.fixedProb);
+			}
+			if (!third && time > (this.timeout / 3) * 2 ){
+				this.fixedProb = 0.3;
+				this.jumpWhen = 75;
+				third = true;
+				System.out.println(this.fixedProb);
+			}
+			time  =  System.currentTimeMillis() - time_start ;
 			
 		}
 		//print final solution
@@ -117,24 +135,25 @@ public class SLS {
 	}
 
 	/**
-	 * Naive initial assignment of all tasks to one vehicle
-	 * TODO: Optimize
+	 * Naive initial assignment of all tasks to one vehicle (the biggest one)
 	 */
 	private void initialSolution() {
 		
-		//Distribute tasks among vehicles 
-		int u=0;
+		
+		int maxCapacity =0;
+		int v=0;
 		for (int i=0; i<this.numVechicles; i++) {
-			for (int j=0; j<(int) (this.numTasks / this.numVechicles) + this.numTasks % this.numVechicles; j++ ) {
-				if (u==this.numTasks) break;
-				this.solutions.array[i].add(new Tupla(this.taskList[u], 1, this.vehiclesList[i].capacity() - this.taskList[u].weight, 0));
-				this.solutions.array[i].add(new Tupla(this.taskList[u], 2, this.vehiclesList[i].capacity() + this.taskList[u].weight, 0));				
-				u++;
+			if (this.vehiclesList[i].capacity() > maxCapacity) {
+				maxCapacity = this.vehiclesList[i].capacity();
+				v = i;
 			}
 		}
+		for (int i=0; i< this.numTasks; i++ ) {
+			this.solutions.array[v].add(new Tupla(this.taskList[i], 1, this.vehiclesList[v].capacity() - this.taskList[i].weight, 0));
+			this.solutions.array[v].add(new Tupla(this.taskList[i], 2, this.vehiclesList[v].capacity() + this.taskList[i].weight, 0));				
+		}
 		
-		//fix cost of the solution
-		for (int i=0; i<this.solutions.array.length; i++) if (this.solutions.array[i].size()>0) fixCost(this.solutions.array[i], 0);
+		fixCost(this.solutions.array[v], v);
 		
 	}
 
@@ -145,64 +164,58 @@ public class SLS {
 	 */
 	private void chooseNeighbors(Solution s, Set<Solution> ns) {
 		Random rand = new Random();
-		int randomVehicle = rand.nextInt(this.numVechicles);
+		//indexes for the actions 
 		int a1;
 		int a2;
 	
-		// Change tasks among vehicles (to choose how many)
-		int howMany = 50;
+		// indexes for the vehicles that exchange tasks
 		int v1;
 		int v2;
 
-		//it is always allowed 
-		v1 = rand.nextInt(this.numVechicles);
-		if (s.array[v1].size() >0) {
-			for (int i=0; i < howMany; i++) {
-			
-				v2 = rand.nextInt(this.numVechicles);
-				//You can always add at the end with the new capacity
-				Solution newSolution = new Solution (cloneSolution(s.array));
-				if (s.array[v1].size() > 0 && vehiclesList[v2].capacity() >= s.array[v1].get(0).task.weight) {
-
-					//it is always allowed as adding a sequential action does not affect previous capacity
-					changeVehicle(v1, v2, newSolution.array);
-					if (!ns.contains(newSolution))
-						ns.add(newSolution);
-				}
-			}
-		}
-		//change one action
+		//it is always allowed, two different vehicle tried (heuristic choice)
+		for (int y=0; y<2; y++) {
 		
-		int rv = rand.nextInt(this.numVechicles);
-		if (s.array[rv].size() != 0) {
-			for (int i=0; i < s.array[rv].size(); i++ ) {
-				a2 = rand.nextInt(s.array[rv].size());
-				for (int j=0; j < s.array[rv].size(); j++) {
-					a1 = rand.nextInt(s.array[rv].size());
-					// Try to move a2 to a1
-					ArrayList<Tupla> newList = cloneList(s.array[rv]);
-					newList.add(a1, newList.remove(a2));
-						
-					if (checkSwap(newList,a1, (double)this.vehiclesList[rv].capacity()))
-					{
+			v1 = rand.nextInt(this.numVechicles);
+			if (s.array[v1].size() >0) {
+				for (int i=0; i < this.numVechicles; i++) {
+					v2 = i;
+					//You can always add at the end with the new capacity
+					Solution newSolution = new Solution (cloneSolution(s.array));
+					if (s.array[v1].size() > 0 && this.vehiclesList[v2].capacity() >= s.array[v1].get(0).task.weight) {
 
-						//if it is allowed, I generate new solution changing the plan for randomVehicle
-						Solution newSolution = new Solution(cloneSolution(s.array));
-
-						newSolution.array[rv] = cloneList(newList);
-						//fix the cumulative cost of that list
-						fixCost(newSolution.array[rv], rv);
-						// TODO: Do we need to implement something to make contains work properly?
-						if (!ns.contains(newSolution)) {
-							ns.add(newSolution);
+						//it is always allowed as adding a sequential action does not affect previous capacity
+						changeVehicle(v1, v2, newSolution.array);
+						ns.add(newSolution);
+					}
+					int rv = v1;
+					if (newSolution.array[rv].size() != 0) {
+						for (int t=0; t < newSolution.array[rv].size(); t++ ) {						
+							
+							a2 = t;
+							for (int j=0; j < newSolution.array[rv].size(); j++) {
+							
+								a1= j;
+								// Try to move a2 to a1
+								ArrayList<Tupla> newList = cloneList(newSolution.array[rv]);
+								newList.add(a1, newList.remove(a2));
 								
+								if (checkMove(newList,a1, (double)this.vehiclesList[rv].capacity()))
+								{
+
+									//if it is allowed, I generate new newSolutionution changing the plan for randomVehicle
+									Solution newSolutionChanged = new Solution(cloneSolution(newSolution.array));
+
+									newSolutionChanged.array[rv] = cloneList(newList);
+									//fix the cumulative cost of that list
+									fixCost(newSolutionChanged.array[rv], rv);
+									ns.add(newSolutionChanged);
+								}
+							}
 						}
 					}
-					
 				}
 			}
-		}
-		System.out.println("How many neighbors ? " + ns.size());
+		}	
 	}
 
 	/**
@@ -213,10 +226,9 @@ public class SLS {
 	 */
 	private void changeVehicle(int v1, int v2, ArrayList<Tupla>[] s) {
 		//take randomly one task  
-		//Remove and shift (can be random then)
 		Random rand = new Random();
 		int t = rand.nextInt(s[v1].size() / 2);
-		int y =0;
+		int y=0;
 		for (int i=0; i<s[v1].size(); i++) {
 			if (s[v1].get(i).action == 1) {
 				if (y==t) {
@@ -247,7 +259,7 @@ public class SLS {
 		//added at the end, no need to iterate for capacity (at the end full v2 capacity)
 		entry.capacityLeft = this.vehiclesList[v2].capacity() - entry.task.weight;
 		Tupla deliverEntry = new Tupla(entry.task, 2, this.vehiclesList[v2].capacity(), 0.);
-		s[v2].add(entry);
+		s[v2].add(new Tupla(entry.task, 1, entry.capacityLeft, 0.));
 		s[v2].add(deliverEntry);
 
 		if (s[v1].size() >0) fixCost(s[v1], v1);
@@ -255,28 +267,6 @@ public class SLS {
 
 	}
 
-	/**
-	 * Try to swap two actions in the plan of one vehicle.
-	 * Returns null if it's not possible to swap the actions.
-	 *
-	 * @param v Current vehicle
-	 * @param a1 Action 1
-	 * @param a2 Action 2
-	 * @param vPlan Currently best plan of vehicle v
-	 * @return
-	 */
-	private ArrayList<Tupla> swap(int v, int a1, int a2, ArrayList<Tupla> vPlan ) {
-		ArrayList<Tupla> neighbor = (ArrayList<Tupla>) cloneList(vPlan);
-		//swap elements
-		Tupla temp = neighbor.get(a1);
-		neighbor.set(a1, neighbor.get(a2));
-		neighbor.set(a2, temp);
-		//Short circuit evaluation
-		if (checkSwap(neighbor, a1, this.vehiclesList[v].capacity()) && checkSwap(neighbor, a2, this.vehiclesList[v].capacity())) {
-			return neighbor;
-		}
-		return null;
-	}
 
 	/**
 	 * Determines whether a swap is valid and doesn't violate any constraints
@@ -285,7 +275,7 @@ public class SLS {
 	 * @param vehicleCapacity The maximum capacity of the vehicle that is supposed to execute the plan
 	 * @return boolean value, indicating whether the swap is valid or not.
 	 */
-	private boolean checkSwap(ArrayList<Tupla> p, int a, double vehicleCapacity) {
+	private boolean checkMove(ArrayList<Tupla> p, int a, double vehicleCapacity) {
 		// Check logical order - no delivery before pickup, no pickup after delivery
 		if (p.get(a).action == 1) {
 			for (int i=0; i < a; i++ )
@@ -304,12 +294,14 @@ public class SLS {
 			if(p.get(j).action == 1) {
 				p.get(j).capacityLeft = capacityLeft - p.get(j).task.weight;
 				//if at some points I violate constraints
+				capacityLeft = p.get(j).capacityLeft;
 				if (capacityLeft <0) return false;					
 			}
 			else {
 				p.get(j).capacityLeft = capacityLeft + p.get(j).task.weight;
+				capacityLeft = p.get(j).capacityLeft;
 			}
-			capacityLeft = p.get(j).capacityLeft;
+			
 		}
 		return true;
 	}
@@ -353,49 +345,52 @@ public class SLS {
 	private void localSearch(Set<Solution> ns, Solution ts, int i) {
 		//just to initialize 
 		Solution best = new Solution(this.numVechicles);
+		Solution random = new Solution(this.numVechicles);
 		double bestCost = Double.POSITIVE_INFINITY;
 		double newCost;
 		Random rand = new Random();
-		//for sure best will an element of ns given the positive_infinity
-		
+		//for sure best will be an element of ns given the positive_infinity
+		int randomNeighbor = 0;
+		if (ns.size()>0 ) {
+		         randomNeighbor = rand.nextInt(ns.size());	
+		}
+		else {
+			//if no neighbors were generated because of constraints, go on with new itereation
+			return;
+		}
+		int r = 0;
+		//find the random and best tasks among the neighbors 
 		for (Solution s : ns) {
 			newCost = computeCost(s.array);
-			if (this.stuck > jumpWhen && rand.nextDouble() < 0.2) {
-				best = s;
+
+			if (ns.size() > 0 && r == randomNeighbor) {
+				random.array = cloneSolution(s.array);
 			}
 			if (newCost < bestCost) {
 				best = s;
 				bestCost = newCost;
 			}
+			r++;
 		}
-
+		
+		double p = rand.nextDouble();
+		
 		if (bestCost < computeCost(ts.array)) {
-			
-			System.out.println("Changed to " + bestCost + " from " + computeCost(ts.array));
-			ts.array = best.array;
+			ts.array = cloneSolution(best.array);
 			this.stuck =0;
 			if (bestCost < computeCost(this.solutions.array)) {
-				this.solutions = best;
+				this.solutions.array = cloneSolution(best.array);
 			}
 		}
-		else if (stuck > jumpWhen){
-			ts.array = best.array;
-		}
-		else {
+		else if (p < this.fixedProb) {
+			
 			this.stuck++;
-			double p = rand.nextDouble();
-			if (p < this.fixedProb) ts = best;
+			ts.array = cloneSolution(best.array);
 		}
-		
-		System.out.println();
-		ts.print(computeCost(ts.array));
-		
-		try{System.in.read();}
-		catch(Exception e){};
-		System.out.println();
-		System.out.println();
-		
-		
+		else if (stuck > jumpWhen){
+			ts.array = cloneSolution(random.array);
+			this.stuck = 0;
+		}
 	
 	}
 	

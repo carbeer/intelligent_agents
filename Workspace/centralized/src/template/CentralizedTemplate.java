@@ -76,9 +76,7 @@ public class CentralizedTemplate implements CentralizedBehavior {
 		}
         
         //Our solution
-        
-        
-//		System.out.println("Agent " + agent.id() + " has tasks " + tasks);
+
         Plan planVehicle1 = naivePlan(vehicles.get(0), tasks);
 
         List<Plan> plans = new ArrayList<Plan>();
