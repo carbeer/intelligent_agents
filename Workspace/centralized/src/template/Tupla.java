@@ -3,6 +3,8 @@ package template;
 import logist.task.Task;
 import java.util.ArrayList;
 
+
+//Class for Tupla describing actions.
 public class Tupla{
 	public Task task;
 	public int action;

@@ -4,11 +4,11 @@ import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Set;
 import java.util.HashSet;
-import java.util.Iterator;
+
 import java.util.List;
 import java.util.Random;
 import logist.LogistSettings;
-import java.io.IOException;
+
 
 import logist.Measures;
 import logist.behavior.AuctionBehavior;
@@ -35,10 +35,9 @@ public class SLS {
 	private Task[] taskList;
 	private Vehicle[] vehiclesList;
 	private double timeout;
-	private double fixedProb;
+	private double currentProb;
 	private int stuck;
 	private int jumpWhen = 20;
-	private int numIter;
 	
 	public SLS (Topology topology, List<Vehicle> vehicles, Task[] taskList, double timeout) {
 		this.taskList = taskList;
@@ -50,8 +49,7 @@ public class SLS {
 		this.solutions = new Solution(this.numVechicles);
 		this.stuck = 0;
 		this.timeout = timeout;
-		this.numIter = 10000;
-		this.fixedProb = 0.8;
+		this.currentProb = 0.8;
 	
 		int k=0;
 		for (Vehicle v : vehicles) {
@@ -65,40 +63,34 @@ public class SLS {
 		Set<Solution> neighbors = new HashSet<>();
 		initialSolution();
 		Solution tempSolution = new Solution(cloneSolution(this.solutions.array));
-		System.out.println("Output initial solution " );
-		this.solutions.print(computeCost(this.solutions.array));
-		//Counter 
-		int i =0;
+	
 		long time_start = System.currentTimeMillis();
 		long time =0;
 		boolean third = false;
 		boolean second = false;
+		//0.9 to be sure to respect timeout (good for reasonable timeouts)
 		while (time < this.timeout * 0.9) {
 			
 			chooseNeighbors(tempSolution, neighbors);
-			localSearch(neighbors, tempSolution, i);
+			localSearch(neighbors, tempSolution);
 			
 			//remove all these neighbors
 			neighbors.clear();
 
 			if (!second && time > (this.timeout / 3)  ) {
-				this.fixedProb = 0.6;
+				this.currentProb = 0.6;
 				this.jumpWhen = 50;
 				second = true; 
-				System.out.println(this.fixedProb);
 			}
 			if (!third && time > (this.timeout / 3) * 2 ){
-				this.fixedProb = 0.3;
+				this.currentProb = 0.3;
 				this.jumpWhen = 75;
 				third = true;
-				System.out.println(this.fixedProb);
 			}
 			time  =  System.currentTimeMillis() - time_start ;
 			
 		}
-		//print final solution
-		System.out.println("Final Solution :" );
-		this.solutions.print(computeCost(this.solutions.array));
+		
 		
 	}
 
@@ -138,7 +130,6 @@ public class SLS {
 	 * Naive initial assignment of all tasks to one vehicle (the biggest one)
 	 */
 	private void initialSolution() {
-		
 		
 		int maxCapacity =0;
 		int v=0;
@@ -202,11 +193,11 @@ public class SLS {
 								if (checkMove(newList,a1, (double)this.vehiclesList[rv].capacity()))
 								{
 
-									//if it is allowed, I generate new newSolutionution changing the plan for randomVehicle
+									//if it is allowed, I generate new newSolutionution changing the plan for v1
 									Solution newSolutionChanged = new Solution(cloneSolution(newSolution.array));
 
 									newSolutionChanged.array[rv] = cloneList(newList);
-									//fix the cumulative cost of that list
+									//fix the cumulative cost of the new list
 									fixCost(newSolutionChanged.array[rv], rv);
 									ns.add(newSolutionChanged);
 								}
@@ -219,7 +210,7 @@ public class SLS {
 	}
 
 	/**
-	 * Removes the first task of vehicle v1 and appends it to the plan of v2.
+	 * Removes the random task of vehicle v1 and appends it to the plan of v2.
 	 * @param v1 index of vehicle1
 	 * @param v2 index of vehicle2
 	 * @param s the currently best plan
@@ -245,7 +236,7 @@ public class SLS {
 		int i=t;
 		//remove the delivery action and rearrange the capacities
 		while (true) {
-			//remove this element does not affect subsequent actions as the weight of the task was removed anyway
+			//removing this element does not affect capacities subsequent actions as the weight of the task was removed anyway 
 			if (s[v1].get(i).task.equals(entry.task)) { 
 				s[v1].remove(i);
 				break;
@@ -261,7 +252,8 @@ public class SLS {
 		Tupla deliverEntry = new Tupla(entry.task, 2, this.vehiclesList[v2].capacity(), 0.);
 		s[v2].add(new Tupla(entry.task, 1, entry.capacityLeft, 0.));
 		s[v2].add(deliverEntry);
-
+		
+		//fix costs
 		if (s[v1].size() >0) fixCost(s[v1], v1);
 		if (s[v2].size() >0) fixCost(s[v2], v2);
 
@@ -307,7 +299,7 @@ public class SLS {
 	}
 
 	/**
-	 *
+	 * Fix the cumulative costs of the actions
 	 * @param list
 	 * @param v
 	 */
@@ -330,7 +322,7 @@ public class SLS {
 	}
 
 	/**
-	 *
+	 * Compute total cost of one solution
 	 * @param s Solution to be computed
 	 * @return Cost of a solution
 	 */
@@ -342,14 +334,21 @@ public class SLS {
 		return cost;
 	}
 	
-	private void localSearch(Set<Solution> ns, Solution ts, int i) {
+	
+	/**
+	 * Implement a stochastic local search method
+	 * @param ns Set of neighbors of temporary solution
+	 * @param ts temporary Solution
+	 * @return Cost of a solution
+	 */
+	private void localSearch(Set<Solution> ns, Solution ts) {
+		
 		//just to initialize 
 		Solution best = new Solution(this.numVechicles);
 		Solution random = new Solution(this.numVechicles);
 		double bestCost = Double.POSITIVE_INFINITY;
 		double newCost;
 		Random rand = new Random();
-		//for sure best will be an element of ns given the positive_infinity
 		int randomNeighbor = 0;
 		if (ns.size()>0 ) {
 		         randomNeighbor = rand.nextInt(ns.size());	
@@ -360,6 +359,8 @@ public class SLS {
 		}
 		int r = 0;
 		//find the random and best tasks among the neighbors 
+		//for sure best will be an element of ns (if not empty) given the positive_infinity
+		
 		for (Solution s : ns) {
 			newCost = computeCost(s.array);
 
@@ -375,6 +376,7 @@ public class SLS {
 		
 		double p = rand.nextDouble();
 		
+		//If better solution found, use that w.p. 1
 		if (bestCost < computeCost(ts.array)) {
 			ts.array = cloneSolution(best.array);
 			this.stuck =0;
@@ -382,11 +384,13 @@ public class SLS {
 				this.solutions.array = cloneSolution(best.array);
 			}
 		}
-		else if (p < this.fixedProb) {
+		//Use that anyway w.p. currentProb
+		else if (p < this.currentProb) {
 			
 			this.stuck++;
 			ts.array = cloneSolution(best.array);
 		}
+		//Jump to a random solution if not improve for a long
 		else if (stuck > jumpWhen){
 			ts.array = cloneSolution(random.array);
 			this.stuck = 0;
@@ -394,7 +398,7 @@ public class SLS {
 	
 	}
 	
-	//Utiliy method 
+	//Utiliy methods
 	private ArrayList<Tupla>[] cloneSolution (ArrayList<Tupla>[] s){
 		ArrayList<Tupla>[] newS = (ArrayList<Tupla>[]) new ArrayList[this.numVechicles];
 		for (int i=0; i<s.length; i++) {

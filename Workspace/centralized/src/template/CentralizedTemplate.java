@@ -35,6 +35,7 @@ public class CentralizedTemplate implements CentralizedBehavior {
     private City[] citiesIndex;
 	private Task[] taskList;
     
+	//setup method is very simple, no computations done here 
     @Override
     public void setup(Topology topology, TaskDistribution distribution,
             Agent agent) {
@@ -69,28 +70,21 @@ public class CentralizedTemplate implements CentralizedBehavior {
     @Override
     public List<Plan> plan(List<Vehicle> vehicles, TaskSet tasks) {
         
-        
+    	long time_start = System.currentTimeMillis();
+    	
+    	List<Plan> plans = new ArrayList<Plan>();
         taskList = new Task[tasks.size()];
         for (Task t : tasks) {
 			taskList[t.id] = t;
 		}
         
         //Our solution
-
-        Plan planVehicle1 = naivePlan(vehicles.get(0), tasks);
-
-        List<Plan> plans = new ArrayList<Plan>();
-        plans.add(planVehicle1);
-        while (plans.size() < vehicles.size()) {
-            plans.add(Plan.EMPTY);
-        }
-        
-        
-        long time_start = System.currentTimeMillis();
+      
         SLS sls = new SLS(this.topology, vehicles, taskList, this.timeout_plan );
         plans = sls.computePlans();
         long time_end = System.currentTimeMillis();
         long duration = time_end - time_start;
+        
         System.out.println("The plan was generated in "+duration+" milliseconds.");
         
         return plans;

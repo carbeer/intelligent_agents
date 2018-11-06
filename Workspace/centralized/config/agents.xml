@@ -4,7 +4,7 @@
 	<!-- A list of agents and their behavior classes -->
 	
 	<!-- #### CENTRALIZED AGENTS ### -->
-	<agent name="centralized-random">
+	<agent name="centralized-main">
 		<set class-path="bin/"/>
 		<set class-name="template.CentralizedTemplate"/>
 	</agent>
