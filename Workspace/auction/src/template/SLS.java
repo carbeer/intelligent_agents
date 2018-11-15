@@ -32,32 +32,35 @@ public class SLS {
 	int numTasks;
 	int numVechicles;
 	int numCities;
-	private Task[] taskList;
+	private ArrayList<Task> taskList;
 	private Vehicle[] vehiclesList;
 	private double timeout;
 	private double currentProb;
 	private int stuck;
 	private int jumpWhen = 20;
 	
-	public SLS (Topology topology, List<Vehicle> vehicles, Task[] taskList, double timeout) {
+	public SLS (Topology topology, List<Vehicle> vehicles, ArrayList<Task> taskList, double timeout) {
 		this.taskList = taskList;
 		this.numVechicles = vehicles.size();
 		this.vehiclesList = new Vehicle[this.numVechicles];
 		
-		this.numTasks = this.taskList.length;
+		this.numTasks = this.taskList.size();
 		this.numCities = topology.size();
 		this.solutions = new Solution(this.numVechicles);
 		this.stuck = 0;
 		this.timeout = timeout;
 		this.currentProb = 0.8;
+		
 	
 		int k=0;
 		for (Vehicle v : vehicles) {
 			this.vehiclesList[k] = v;
 			k++;
 		}
+		if (taskList.isEmpty()) return;
 		initialSolution();
 		search();
+		
 	}
 	
 	private void search() {
@@ -147,8 +150,8 @@ public class SLS {
 			}
 		}
 		for (int i=0; i< this.numTasks; i++ ) {
-			this.solutions.array[v].add(new Tupla(this.taskList[i], 1, this.vehiclesList[v].capacity() - this.taskList[i].weight, 0));
-			this.solutions.array[v].add(new Tupla(this.taskList[i], 2, this.vehiclesList[v].capacity() + this.taskList[i].weight, 0));				
+			this.solutions.array[v].add(new Tupla(this.taskList.get(i), 1, this.vehiclesList[v].capacity() - this.taskList.get(i).weight, 0));
+			this.solutions.array[v].add(new Tupla(this.taskList.get(i), 2, this.vehiclesList[v].capacity() + this.taskList.get(i).weight, 0));				
 		}
 		
 		fixCost(this.solutions.array[v], v);
@@ -333,8 +336,10 @@ public class SLS {
 	 * @param s Solution to be computed
 	 * @return Cost of a solution
 	 */
-	private double computeCost (ArrayList<Tupla>[] s) {
+	public double computeCost (ArrayList<Tupla>[] s) {		
+		
 		double cost =0;
+		if (this.taskList.isEmpty()) return cost;
 		for (int i=0; i < s.length; i++) {
 			if(s[i].size() >0) cost += s[i].get(s[i].size() -1).cost;
 		}

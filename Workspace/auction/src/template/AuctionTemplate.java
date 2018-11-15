@@ -33,9 +33,10 @@ public class AuctionTemplate implements AuctionBehavior {
 	private Vehicle vehicle;
 	private City currentCity;
 	private Solution solution;
+	private Solution solutionT;
 	public ArrayList<Task> myTasks;
+	public ArrayList<Task> myTasksT;
 	private int numMyTask;
-	public Task[] taskList;
 	public double planTimeout;
 	public double setupTimeout;
 
@@ -50,15 +51,17 @@ public class AuctionTemplate implements AuctionBehavior {
 		this.currentCity = vehicle.homeCity();
 		//create first solution
 		this.solution = new Solution(this.agent.vehicles().size());
+		this.solutionT = new Solution(this.agent.vehicles().size());
 		long seed = -9019554669489983951L * currentCity.hashCode() * agent.id();
 		this.random = new Random(seed);
 		this.myTasks = new ArrayList<Task>();
+		this.myTasksT = new ArrayList<Task>();
 		this.numMyTask = 0;
 		
 		
 		LogistSettings ls = null;
         try {
-            ls = Parsers.parseSettings("config/settings_default.xml");
+            ls = Parsers.parseSettings("config/settings_auction.xml");
         }
         catch (Exception exc) {
             System.out.println("There was a problem loading the configuration file.");
@@ -72,20 +75,23 @@ public class AuctionTemplate implements AuctionBehavior {
 	@Override
 	public void auctionResult(Task previous, int winner, Long[] bids) {
 		if (winner == agent.id()) {
+			this.numMyTask++;
 			currentCity = previous.deliveryCity;
+			this.myTasks.add(previous);
+			System.out.println("WONNN !!!!" + previous.id);
 		}
-		//Can just change the SLS to manage ArrayList ???
-		this.taskList = new Task[this.numMyTask];
-		int i=0;
-        for (Task t : this.myTasks) {
-			taskList[i] = t;
-			i++;
+		else {
+			if (this.myTasksT.size()>0)
+				this.myTasksT.remove(this.myTasksT.size() - 1);
 		}
+		
+	
 	}
 	
 	@Override
 	public Long askPrice(Task task) {
 		
+	
 		//check whether at least one vehicle can take this task
 		boolean feasible = false;
 		for (Vehicle v : this.agent.vehicles()) {
@@ -95,34 +101,33 @@ public class AuctionTemplate implements AuctionBehavior {
 			return null;
 		
 		
-		/*
-		long distanceTask = task.pickupCity.distanceUnitsTo(task.deliveryCity);
-		long distanceSum = distanceTask
-				+ currentCity.distanceUnitsTo(task.pickupCity);
-		double marginalCost = Measures.unitsToKM(distanceSum
-				* vehicle.costPerKm());
-
-		double ratio = 1.0 + (random.nextDouble() * 0.05 * task.id);
-		double bid = ratio * marginalCost;
-		*/
-		SLS sls = new SLS (topology, agent.vehicles(), this.taskList, this.planTimeout);
+		SLS sls = new SLS (topology, agent.vehicles(), this.myTasks, this.planTimeout);
+		this.myTasksT.add(task);
+		SLS slsT =  new SLS (topology, agent.vehicles(),this.myTasksT, this.planTimeout );
 		this.solution = sls.getSolution();
-		//return (long) Math.round(bid);
-		return (long)123;
+		this.solutionT = slsT.getSolution();
+		long marginal = (long) (slsT.computeCost(slsT.solutions.array) - sls.computeCost(sls.solutions.array));
+		if (marginal >0 )
+			return (long) (marginal*1.1) ;
+		else
+			return null;
 	}
 
 	@Override
 	public List<Plan> plan(List<Vehicle> vehicles, TaskSet tasks) {
 		
 //		System.out.println("Agent " + agent.id() + " has tasks " + tasks);
-
-		Plan planVehicle1 = naivePlan(vehicle, tasks);
-
-		List<Plan> plans = new ArrayList<Plan>();
-		plans.add(planVehicle1);
-		while (plans.size() < vehicles.size())
-			plans.add(Plan.EMPTY);
-
+		long time_start = System.currentTimeMillis();
+	
+		//Our solution : Recompute again solution using more time !!!!
+	      
+        SLS sls = new SLS(this.topology, this.agent.vehicles(), this.myTasks, this.planTimeout );
+        List<Plan> plans = new ArrayList<Plan>();
+        plans = sls.computePlans();
+        long time_end = System.currentTimeMillis();
+        long duration = time_end - time_start;
+        
+        System.out.println("The plan was generated in "+duration+" milliseconds.");
 		return plans;
 	}
 
