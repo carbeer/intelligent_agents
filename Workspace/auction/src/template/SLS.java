@@ -56,19 +56,15 @@ public class SLS {
 			this.vehiclesList[k] = v;
 			k++;
 		}
-		//compute initial solution when no initial has passed
 		initialSolution();
 		search();
 	}
-	//added for auction, start from previous solution
-	public SLS (Topology topology, List<Vehicle> vehicles, Task[] taskList, double timeout, Solution initialSolution) {
-		this(topology, vehicles, taskList, timeout);
-		this.solutions = new Solution(this.numVechicles);
-		this.solutions.array = cloneSolution(initialSolution.array);
-	}
+	
 	private void search() {
 		Set<Solution> neighbors = new HashSet<>();
+
 		Solution tempSolution = new Solution(cloneSolution(this.solutions.array));
+		
 		System.out.println("Initial Solution :" );
 		this.solutions.print(computeCost(this.solutions.array));
 		
@@ -424,6 +420,10 @@ public class SLS {
 			newL.add(t.clone());
 		}
 		return newL;
+	}
+	
+	public Solution getSolution () {
+		return new Solution(cloneSolution(this.solutions.array));
 	}
 
 }
