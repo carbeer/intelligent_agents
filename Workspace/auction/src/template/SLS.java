@@ -185,7 +185,9 @@ public class SLS {
 					if (s.array[v1].size() > 0 ) {
 
 						//it is always allowed as adding a sequential action does not affect previous capacity
-						changeVehicle(v1, v2, newSolution.array);
+						if (!changeVehicle(v1, v2, newSolution.array)) {
+							continue;
+						}
 						ns.add(newSolution);
 					}
 					int rv = v1;
@@ -225,7 +227,7 @@ public class SLS {
 	 * @param v2 index of vehicle2
 	 * @param s the currently best plan
 	 */
-	private void changeVehicle(int v1, int v2, ArrayList<Tupla>[] s) {
+	private boolean changeVehicle(int v1, int v2, ArrayList<Tupla>[] s) {
 		//take randomly one task  
 		Random rand = new Random();
 		int t = rand.nextInt(s[v1].size() / 2);
@@ -241,8 +243,13 @@ public class SLS {
 				}
 			}
 		}
+		
+		
 		//now t is the index in the list
 		Tupla entry = s[v1].remove(t);
+		//check if we can load it
+		if (!(entry.task.weight < this.vehiclesList[v2].capacity()))
+			return false;
 		int i=t;
 		//remove the delivery action and rearrange the capacities
 		while (true) {
@@ -265,7 +272,8 @@ public class SLS {
 		
 		//fix costs
 		if (s[v1].size() >0) fixCost(s[v1], v1);
-		if (s[v2].size() >0) fixCost(s[v2], v2);
+		fixCost(s[v2], v2);
+		return true;
 
 	}
 

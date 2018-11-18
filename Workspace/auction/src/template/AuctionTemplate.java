@@ -76,14 +76,17 @@ public class AuctionTemplate implements AuctionBehavior {
 
 	@Override
 	public void auctionResult(Task previous, int winner, Long[] bids) {
-		System.out.println("Reward task number " + previous.id + " is " + previous.reward);
+	
 		if (winner == agent.id()) {
 			this.numMyTask++;
 			currentCity = previous.deliveryCity;
 			this.myTasks.add(previous);
 			this.solution.array = Utils.cloneSolution(this.solutionT.array);
 			System.out.println("WONNN !!!!" + previous.id);
-			System.out.println("Reward task number " + previous.id + " is " + bids[agent.id()]);
+			
+			
+			
+			
 		}
 		else {
 			if (this.myTasksT.size()>0)
@@ -104,11 +107,15 @@ public class AuctionTemplate implements AuctionBehavior {
 		}
 		if (feasible == false)
 			return null;
-		System.out.println("Reward task number " + task.id + " is " + task.reward);
+		
 		this.myTasksT.add(task);
 		SLS slsT =  new SLS (topology, agent.vehicles(),this.myTasksT, this.planTimeout );
 		this.solutionT = slsT.getSolution();
 		long marginal = (long) (this.solutionT.computeCost() - this.solution.computeCost());
+		
+		//Probability of having zero marginal with new new plan
+		double p = zeroMarginalProb(this.solutionT);
+		
 		if (marginal >0 )
 			return (long) (marginal*1.1) ;
 		else if ( marginal == 0) {
@@ -134,6 +141,32 @@ public class AuctionTemplate implements AuctionBehavior {
         
         System.out.println("The plan was generated in "+duration+" milliseconds.");
 		return plans;
+	}
+	
+	private double zeroMarginalProb (Solution s) {
+		//Update graphPlan
+		ArrayList<City> graphPlan = new ArrayList<>();
+		//just use the longest plan (we can change then)
+		int longestVehicle =0;
+		for (int i=1; i<s.array.length; i++) {
+			if (s.array[i].size() > longestVehicle) longestVehicle = i;
+		}
+		//create list of city to be visited (in order)
+		for (int i=0; i<s.array[longestVehicle].size(); i++) {
+			if (s.array[longestVehicle].get(i).action == 1 )
+				graphPlan.add(s.array[longestVehicle].get(i).task.pickupCity);
+			else
+				graphPlan.add(s.array[longestVehicle].get(i).task.deliveryCity);
+		}
+		double prob = 0;
+		//probability of finding such tasks
+		for (int i =0; i<graphPlan.size() -1 ; i++) {
+			for (int j=i+1; j<graphPlan.size(); j++) {
+				prob += this.distribution.probability(graphPlan.get(i), graphPlan.get(j));
+			}
+		}
+		//normalization factor (uniform distrobution among cities)
+		return prob/this.topology.cities().size();
 	}
 
 	private Plan naivePlan(Vehicle vehicle, TaskSet tasks) {
