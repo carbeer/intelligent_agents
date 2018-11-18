@@ -51,7 +51,6 @@ public class SLS {
 		}
 		if (taskList.isEmpty()) return;
 		initialSolution();
-
 		search();
 	}
 
@@ -129,7 +128,7 @@ public class SLS {
 			for (int a2 = 0; a2 < newSolution.vehiclePlan[v1].size(); a2++ ) {
 				for (int a1 = 0; a1 < newSolution.vehiclePlan[v1].size(); a1++) {
 					// Try to move a2 to a1
-					ArrayList<Tupla> newPlan = cloneList(newSolution.vehiclePlan[v1]);
+					ArrayList<Tupla> newPlan = Utils.cloneList(newSolution.vehiclePlan[v1]);
 					newPlan.add(a1, newPlan.remove(a2));
 
 					if (checkMove(newPlan, a1, this.vehiclesList[v1].capacity())) {
@@ -137,7 +136,7 @@ public class SLS {
 						//if it is allowed, I generate new solution changing the plan for v1
 						Solution newSolutionChanged = newSolution.clone();
 
-						newSolutionChanged.vehiclePlan[v1] = cloneList(newPlan);
+						newSolutionChanged.vehiclePlan[v1] = Utils.cloneList(newPlan);
 						//fix the cumulative cost of the new list
 						fixCost(newSolutionChanged.vehiclePlan[v1], v1);
 						ns.add(newSolutionChanged);
@@ -285,7 +284,7 @@ public class SLS {
 		for (Solution s : ns) {
 			// Pick random neighbor solution for the next step
 			if (i == randomNeighbor) {
-				random.vehiclePlan = cloneArray(s.vehiclePlan);
+				random.vehiclePlan = Utils.cloneArray(s.vehiclePlan);
 			}
 
 			// Calculate the cost of every neighbor solution
@@ -300,23 +299,23 @@ public class SLS {
 		// If better solution found, use it with prob. 1
 		if (bestCost < ts.computeCost()) {
 			// Update the temporary solution
-			ts.vehiclePlan = cloneArray(best.vehiclePlan);
+			ts.vehiclePlan = Utils.cloneArray(best.vehiclePlan);
 			this.stuck = 0;
 			// Update also the overall solution if applicable
 			if (bestCost < this.bestSolution.computeCost()) {
-				this.bestSolution.vehiclePlan = cloneArray(best.vehiclePlan);
+				this.bestSolution.vehiclePlan = Utils.cloneArray(best.vehiclePlan);
 			}
 		}
 
 		// Use it anyway with currentProb
 		else if (rand.nextDouble() < this.currentProb) {
-			ts.vehiclePlan = cloneArray(best.vehiclePlan);
+			ts.vehiclePlan = Utils.cloneArray(best.vehiclePlan);
 			this.stuck++;
 		}
 
 		// Jump to a random neighbor to escape local minima if there hasn't been any improvement
 		else if (this.stuck > this.jumpWhen){
-			ts.vehiclePlan = cloneArray(random.vehiclePlan);
+			ts.vehiclePlan = Utils.cloneArray(random.vehiclePlan);
 			this.stuck = 0;
 		}
 	}
@@ -357,28 +356,7 @@ public class SLS {
 		return plans;
 	}
 
-	//================================================================================
-	// Utility methods
-	//================================================================================
-
-	public static ArrayList<Tupla> cloneList(ArrayList<Tupla> l){
-		ArrayList<Tupla> newL = new ArrayList<Tupla>();
-		for (Tupla t : l) {
-			newL.add(t.clone());
-		}
-		return newL;
-	}
-
-	public static ArrayList<Tupla>[] cloneArray(ArrayList<Tupla>[] l) {
-		ArrayList<Tupla>[] newS = (ArrayList<Tupla>[]) new ArrayList[l.length];
-		for (int i=0; i< l.length; i++) {
-			newS[i] = new ArrayList<Tupla>(SLS.cloneList(l[i]));
-		}
-		return newS;
-	}
-
-	public Solution getCopiedSolution () {
+	public Solution getSolution () {
 		return this.bestSolution.clone();
 	}
-
 }

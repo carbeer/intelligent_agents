@@ -33,11 +33,12 @@ public class AuctionTemplate implements AuctionBehavior {
 	private City currentCity;
 	public ArrayList<Task> myTasks;
 	public ArrayList<Task> myTasksT;
-	public double planTimeout;
-	public double setupTimeout;
+	public long planTimeout;
+	public long setupTimeout;
 	public long bidTimeout;
 	public SLS currentPlan;
 	public SLS potentialPlan;
+
 
 	@Override
 	public void setup(Topology topology, TaskDistribution distribution,
@@ -76,17 +77,19 @@ public class AuctionTemplate implements AuctionBehavior {
         this.bidTimeout = ls.get(LogistSettings.TimeoutKey.BID);
 		this.planTimeout = ls.get(LogistSettings.TimeoutKey.PLAN);
 
-        System.out.printf("Got the following settings during setup:\n setupTimeout: %f sec\n planTimeout: " +
-				"%f sec\n bidTimeout: %d sec\n", this.setupTimeout, this.planTimeout, bidTimeout);
+        System.out.printf("Got the following settings during setup:\n setupTimeout: %d sec\n planTimeout: " +
+				"%d sec\n bidTimeout: %d sec\n", this.setupTimeout, this.planTimeout, bidTimeout);
 	}
 
 	@Override
 	public void auctionResult(Task previous, int winner, Long[] bids) {
+		System.out.println("Reward task number " + previous.id + " is " + previous.reward);
 		if (winner == agent.id()) {
 			currentCity = previous.deliveryCity;
 			this.myTasks.add(previous);
 			System.out.printf("WONNN Task %s !!!!\n", previous.id);
 			this.currentPlan = this.potentialPlan;
+			System.out.println("Reward task number " + previous.id + " is " + bids[agent.id()]);
 		}
 		else {
 			if (this.myTasksT.size() > 0)
@@ -111,8 +114,13 @@ public class AuctionTemplate implements AuctionBehavior {
 
 		double marginal = this.potentialPlan.bestSolution.computeCost() - this.currentPlan.bestSolution.computeCost();
 		System.out.printf("Marginal costs for the task: %f\n", marginal);
-
-		return (long) marginal;
+		if (marginal >0 )
+			return (long) (marginal*1.1) ;
+		else if ( marginal == 0) {
+			return (long) 100;
+		}
+		else
+			return (long) (0.8 * marginal);
 	}
 
 	@Override

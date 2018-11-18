@@ -41,7 +41,7 @@ public class Solution implements Cloneable{
 
 	@Override
 	public Solution clone() {
-		ArrayList<Tupla>[] newS = SLS.cloneArray(this.vehiclePlan);
+		ArrayList<Tupla>[] newS = Utils.cloneArray(this.vehiclePlan);
 		return new Solution(newS);
 	}
 
@@ -58,7 +58,7 @@ public class Solution implements Cloneable{
 		}
 		return true;
 	}
-	
+
 	@Override
 	public int hashCode() {
 		int hashCode = 1;
