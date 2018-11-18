@@ -23,7 +23,7 @@
 	
 	<!-- Timeouts -->
 	<set timeout-setup="300000" />
-	<set timeout-plan="3000" />
+	<set timeout-plan="5000" />
 	<set timeout-bid="300000" />
 	
 	<!-- Flags -->

@@ -1,6 +1,7 @@
 package template;
 import java.util.ArrayList;
 
+
 public class Solution {
 	public ArrayList<Tupla>[] array;
 	
@@ -37,6 +38,14 @@ public class Solution {
 			System.out.println();
 		}
 		System.out.println();
+	}
+	
+	public double computeCost() {
+		double cost =0;
+		for (int i=0; i < this.array.length; i++) {
+			if(this.array[i].size() >0) cost += this.array[i].get(this.array[i].size() -1).cost;
+		}
+		return cost;
 	}
 	
 	@Override

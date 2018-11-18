@@ -39,6 +39,7 @@ public class AuctionTemplate implements AuctionBehavior {
 	private int numMyTask;
 	public double planTimeout;
 	public double setupTimeout;
+	public double bidTimeout;
 
 	@Override
 	public void setup(Topology topology, TaskDistribution distribution,
@@ -68,6 +69,7 @@ public class AuctionTemplate implements AuctionBehavior {
         }
         this.planTimeout = ls.get(LogistSettings.TimeoutKey.PLAN);
         this.setupTimeout = ls.get(LogistSettings.TimeoutKey.SETUP);
+        this.bidTimeout = ls.get(LogistSettings.TimeoutKey.BID);
         
         
 	}
@@ -78,6 +80,7 @@ public class AuctionTemplate implements AuctionBehavior {
 			this.numMyTask++;
 			currentCity = previous.deliveryCity;
 			this.myTasks.add(previous);
+			this.solution.array = Utils.cloneSolution(this.solutionT.array);
 			System.out.println("WONNN !!!!" + previous.id);
 		}
 		else {
@@ -100,13 +103,10 @@ public class AuctionTemplate implements AuctionBehavior {
 		if (feasible == false)
 			return null;
 		
-		
-		SLS sls = new SLS (topology, agent.vehicles(), this.myTasks, this.planTimeout);
 		this.myTasksT.add(task);
 		SLS slsT =  new SLS (topology, agent.vehicles(),this.myTasksT, this.planTimeout );
-		this.solution = sls.getSolution();
 		this.solutionT = slsT.getSolution();
-		long marginal = (long) (slsT.computeCost(slsT.solutions.array) - sls.computeCost(sls.solutions.array));
+		long marginal = (long) (this.solutionT.computeCost() - this.solution.computeCost());
 		if (marginal >0 )
 			return (long) (marginal*1.1) ;
 		else

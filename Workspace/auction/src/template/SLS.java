@@ -66,10 +66,10 @@ public class SLS {
 	private void search() {
 		Set<Solution> neighbors = new HashSet<>();
 
-		Solution tempSolution = new Solution(cloneSolution(this.solutions.array));
+		Solution tempSolution = new Solution(Utils.cloneSolution(this.solutions.array));
 		
 		System.out.println("Initial Solution :" );
-		this.solutions.print(computeCost(this.solutions.array));
+		this.solutions.print(this.solutions.computeCost());
 		
 		long time_start = System.currentTimeMillis();
 		long time =0;
@@ -99,7 +99,7 @@ public class SLS {
 		}
 		
 		System.out.println("Final Solution :" );
-		this.solutions.print(computeCost(this.solutions.array));
+		this.solutions.print(this.solutions.computeCost());
 		
 		
 	}
@@ -181,7 +181,7 @@ public class SLS {
 				for (int i=0; i < this.numVechicles; i++) {
 					v2 = i;
 					//You can always add at the end with the new capacity
-					Solution newSolution = new Solution (cloneSolution(s.array));
+					Solution newSolution = new Solution (Utils.cloneSolution(s.array));
 					if (s.array[v1].size() > 0 ) {
 
 						//it is always allowed as adding a sequential action does not affect previous capacity
@@ -197,16 +197,16 @@ public class SLS {
 							
 								a1= j;
 								// Try to move a2 to a1
-								ArrayList<Tupla> newList = cloneList(newSolution.array[rv]);
+								ArrayList<Tupla> newList = Utils.cloneList(newSolution.array[rv]);
 								newList.add(a1, newList.remove(a2));
 								
 								if (checkMove(newList,a1, (double)this.vehiclesList[rv].capacity()))
 								{
 
 									//if it is allowed, I generate new newSolutionution changing the plan for v1
-									Solution newSolutionChanged = new Solution(cloneSolution(newSolution.array));
+									Solution newSolutionChanged = new Solution(Utils.cloneSolution(newSolution.array));
 
-									newSolutionChanged.array[rv] = cloneList(newList);
+									newSolutionChanged.array[rv] = Utils.cloneList(newList);
 									//fix the cumulative cost of the new list
 									fixCost(newSolutionChanged.array[rv], rv);
 									ns.add(newSolutionChanged);
@@ -330,21 +330,6 @@ public class SLS {
 		}
 		return;
 	}
-
-	/**
-	 * Compute total cost of one solution
-	 * @param s Solution to be computed
-	 * @return Cost of a solution
-	 */
-	public double computeCost (ArrayList<Tupla>[] s) {		
-		
-		double cost =0;
-		if (this.taskList.isEmpty()) return cost;
-		for (int i=0; i < s.length; i++) {
-			if(s[i].size() >0) cost += s[i].get(s[i].size() -1).cost;
-		}
-		return cost;
-	}
 	
 	
 	/**
@@ -374,10 +359,10 @@ public class SLS {
 		//for sure best will be an element of ns (if not empty) given the positive_infinity
 		
 		for (Solution s : ns) {
-			newCost = computeCost(s.array);
+			newCost = s.computeCost();
 
 			if (ns.size() > 0 && r == randomNeighbor) {
-				random.array = cloneSolution(s.array);
+				random.array = Utils.cloneSolution(s.array);
 			}
 			if (newCost < bestCost) {
 				best = s;
@@ -389,46 +374,28 @@ public class SLS {
 		double p = rand.nextDouble();
 		
 		//If better solution found, use that w.p. 1
-		if (bestCost < computeCost(ts.array)) {
-			ts.array = cloneSolution(best.array);
+		if (bestCost < ts.computeCost()) {
+			ts.array = Utils.cloneSolution(best.array);
 			this.stuck =0;
-			if (bestCost < computeCost(this.solutions.array)) {
-				this.solutions.array = cloneSolution(best.array);
+			if (bestCost < this.solutions.computeCost()) {
+				this.solutions.array = Utils.cloneSolution(best.array);
 			}
 		}
 		//Use that anyway w.p. currentProb
 		else if (p < this.currentProb) {
 			
 			this.stuck++;
-			ts.array = cloneSolution(best.array);
+			ts.array = Utils.cloneSolution(best.array);
 		}
 		//Jump to a random solution if not improve for a long
 		else if (stuck > jumpWhen){
-			ts.array = cloneSolution(random.array);
+			ts.array = Utils.cloneSolution(random.array);
 			this.stuck = 0;
 		}
 	
 	}
-	
-	//Utiliy methods
-	private ArrayList<Tupla>[] cloneSolution (ArrayList<Tupla>[] s){
-		ArrayList<Tupla>[] newS = (ArrayList<Tupla>[]) new ArrayList[this.numVechicles];
-		for (int i=0; i<s.length; i++) {
-			newS[i] = new ArrayList<Tupla>(cloneList(s[i]));
-		}
-		return newS;
-	}
-	
-	private ArrayList<Tupla> cloneList (ArrayList<Tupla> l){
-		ArrayList<Tupla> newL = new ArrayList<Tupla>();
-		for (Tupla t : l) {
-			newL.add(t.clone());
-		}
-		return newL;
-	}
-	
 	public Solution getSolution () {
-		return new Solution(cloneSolution(this.solutions.array));
+		return new Solution(Utils.cloneSolution(this.solutions.array));
 	}
 
 }
