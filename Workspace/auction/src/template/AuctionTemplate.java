@@ -76,12 +76,14 @@ public class AuctionTemplate implements AuctionBehavior {
 
 	@Override
 	public void auctionResult(Task previous, int winner, Long[] bids) {
+		System.out.println("Reward task number " + previous.id + " is " + previous.reward);
 		if (winner == agent.id()) {
 			this.numMyTask++;
 			currentCity = previous.deliveryCity;
 			this.myTasks.add(previous);
 			this.solution.array = Utils.cloneSolution(this.solutionT.array);
 			System.out.println("WONNN !!!!" + previous.id);
+			System.out.println("Reward task number " + previous.id + " is " + bids[agent.id()]);
 		}
 		else {
 			if (this.myTasksT.size()>0)
@@ -102,15 +104,18 @@ public class AuctionTemplate implements AuctionBehavior {
 		}
 		if (feasible == false)
 			return null;
-		
+		System.out.println("Reward task number " + task.id + " is " + task.reward);
 		this.myTasksT.add(task);
 		SLS slsT =  new SLS (topology, agent.vehicles(),this.myTasksT, this.planTimeout );
 		this.solutionT = slsT.getSolution();
 		long marginal = (long) (this.solutionT.computeCost() - this.solution.computeCost());
 		if (marginal >0 )
 			return (long) (marginal*1.1) ;
+		else if ( marginal == 0) {
+			return (long) 100;
+		}
 		else
-			return null;
+			return (long) 0.8 * marginal;
 	}
 
 	@Override
