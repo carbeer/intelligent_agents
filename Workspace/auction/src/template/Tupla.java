@@ -18,7 +18,7 @@ public class Tupla{
 		this.cost = cost;
 	}
 	
-	public Tupla clone () {
+	public Tupla clone() {
 		return new Tupla(this.task, this.action, this.capacityLeft, this.cost);
 	}
 	

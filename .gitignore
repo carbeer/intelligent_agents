@@ -8,3 +8,6 @@
 *.iml
 *.iws
 classes/
+
+#Logist
+history.xml
