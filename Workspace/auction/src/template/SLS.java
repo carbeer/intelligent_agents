@@ -26,9 +26,9 @@ public class SLS {
 	private double currentProb;
 	private int jumpWhen;
 
-	final double END_STAGE1;
-	final double END_STAGE2;
-	final double END_STAGE3;
+	static double END_STAGE1;
+	static double END_STAGE2;
+	static double END_STAGE3;
 
 
 	public SLS (List<Vehicle> vehicles, ArrayList<Task> taskList, double timeout) {
@@ -39,9 +39,7 @@ public class SLS {
 
 		// TODO: Maybe it would be worthwhile to make some kind of thread that monitors time and ensures returning before the timeout --> optimizes time usag
 		//0.9 to be sure to respect timeout (good for reasonable timeouts)
-		END_STAGE1 = System.currentTimeMillis() + timeout * 0.3;
-		END_STAGE2 = System.currentTimeMillis() + timeout * 0.6;
-		END_STAGE3 = System.currentTimeMillis() + timeout * 0.9;
+		setTimeouts(timeout);
 
 
 		int k = 0;
@@ -58,22 +56,54 @@ public class SLS {
 	 * Naive initial assignment of all tasks to one vehicle (the biggest one)
 	 */
 	private void initialSolution() {
-		int maxCapacity = 0;
-		int v = 0;
-		for (int i=0; i<this.numVehicles; i++) {
-			if (this.vehiclesList[i].capacity() > maxCapacity) {
-				maxCapacity = this.vehiclesList[i].capacity();
-				v = i;
-			}
+		switch (Configuration.initSolution) {
+			case ALL_TO_BIGGEST:
+				int maxCapacity = 0;
+				int v = 0;
+				for (int i=0; i<this.numVehicles; i++) {
+					if (this.vehiclesList[i].capacity() > maxCapacity) {
+						maxCapacity = this.vehiclesList[i].capacity();
+						v = i;
+					}
+				}
+				for (int i=0; i < this.taskList.size(); i++ ) {
+					this.bestSolution.vehiclePlan[v].add(new Tupla(this.taskList.get(i), 1, this.vehiclesList[v].capacity() - this.taskList.get(i).weight, 0));
+					this.bestSolution.vehiclePlan[v].add(new Tupla(this.taskList.get(i), 2, this.vehiclesList[v].capacity() + this.taskList.get(i).weight, 0));
+				}
+				fixCost(this.bestSolution.vehiclePlan[v], v);
+				break;
+			case EACH_TO_CLOSEST:
+				for (Task t : taskList) {
+					Vehicle nearestVehicle = null;
+					double dist = Integer.MAX_VALUE;
+					for (Vehicle vcl : vehiclesList) {
+						if (vcl.homeCity().distanceTo(t.pickupCity) < dist) {
+							double capacity = this.bestSolution.vehiclePlan[vcl.id()].size() == 0
+									? vcl.capacity()
+									: this.bestSolution.vehiclePlan[vcl.id()].get(this.bestSolution.vehiclePlan[vcl.id()].size() - 1).capacityLeft;
+							if (capacity > t.weight) {
+								dist = vcl.homeCity().distanceTo(t.pickupCity);
+								nearestVehicle = vcl;
+							}
+						}
+					}
+					this.bestSolution.vehiclePlan[nearestVehicle.id()].add(new Tupla(t, 1, this.vehiclesList[nearestVehicle.id()].capacity() - t.weight, 0));
+					this.bestSolution.vehiclePlan[nearestVehicle.id()].add(new Tupla(t, 2, this.vehiclesList[nearestVehicle.id()].capacity() + t.weight, 0));
+					fixCost(this.bestSolution.vehiclePlan[nearestVehicle.id()], nearestVehicle.id());
+				}
+				break;
+			default:
+				System.out.println("WARN: No strategy for initial solution selected");
 		}
-		for (int i=0; i < this.taskList.size(); i++ ) {
-			this.bestSolution.vehiclePlan[v].add(new Tupla(this.taskList.get(i), 1, this.vehiclesList[v].capacity() - this.taskList.get(i).weight, 0));
-			this.bestSolution.vehiclePlan[v].add(new Tupla(this.taskList.get(i), 2, this.vehiclesList[v].capacity() + this.taskList.get(i).weight, 0));
-		}
-		fixCost(this.bestSolution.vehiclePlan[v], v);
 	}
-	
-	private void search() {
+
+	private void setTimeouts(double timeout) {
+		END_STAGE1 = System.currentTimeMillis() + timeout * 0.3;
+		END_STAGE2 = System.currentTimeMillis() + timeout * 0.6;
+		END_STAGE3 = System.currentTimeMillis() + timeout * 0.9;
+	}
+
+	public void search() {
 		this.tempSolution = this.bestSolution.clone();
 
 		System.out.println("Initial Solution: ");
@@ -103,7 +133,7 @@ public class SLS {
 	}
 
 	/**
-	 *
+	 * TODO: Check whether multiple loops lead to better performance
 	 * @param s Currently best list of tuples
 	 */
 	private HashSet<Solution> chooseNeighbors(Solution s) {
@@ -199,9 +229,9 @@ public class SLS {
 		s[v2].add(deliverEntry);
 		
 		//fix costs
-		if (s[v1].size() >0) fixCost(s[v1], v1);
+		if (s[v1].size() > 0) fixCost(s[v1], v1);
 
-		if (s[v2].size() >0) fixCost(s[v2], v2);
+		if (s[v2].size() > 0) fixCost(s[v2], v2);
 		return true;
 	}
 
