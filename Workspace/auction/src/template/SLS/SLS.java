@@ -1,4 +1,4 @@
-package template;
+package template.SLS;
 
 import java.util.ArrayList;
 import java.util.Set;
@@ -11,11 +11,12 @@ import java.util.Random;
 import logist.simulation.Vehicle;
 import logist.plan.Plan;
 import logist.task.Task;
-import logist.topology.Topology;
 import logist.topology.Topology.City;
+import template.Configuration;
+import template.Utils;
 
 public class SLS {
-	Solution bestSolution;
+	public Solution bestSolution;
 	Solution tempSolution;
 
 	private ArrayList<Task> taskList;
@@ -52,11 +53,11 @@ public class SLS {
 		search();
 	}
 
-	/** TODO: Assign to closest vehicle?
+	/**
 	 * Naive initial assignment of all tasks to one vehicle (the biggest one)
 	 */
 	private void initialSolution() {
-		switch (Configuration.initSolution) {
+		switch (Configuration.INIT_STRATEGY) {
 			case ALL_TO_BIGGEST:
 				int maxCapacity = 0;
 				int v = 0;

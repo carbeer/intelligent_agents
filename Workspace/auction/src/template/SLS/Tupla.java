@@ -1,7 +1,6 @@
-package template;
+package template.SLS;
 
 import logist.task.Task;
-import java.util.ArrayList;
 
 
 //Class for Tupla describing actions.

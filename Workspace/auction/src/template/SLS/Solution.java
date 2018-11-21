@@ -1,4 +1,6 @@
-package template;
+package template.SLS;
+import template.Utils;
+
 import java.util.ArrayList;
 
 public class Solution implements Cloneable{
