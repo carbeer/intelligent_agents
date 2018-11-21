@@ -122,14 +122,15 @@ public class AuctionTemplate implements AuctionBehavior {
 		
 		//Probability of having zero marginal with new new plan
 		double p = zeroMarginalProb(this.potentialPlan.bestSolution);
-		
+		//costant to multiply
+		double constant  =  1.8 - p;
+		System.out.printf("Probability is %f \n", p);
+		System.out.printf("Bid is is %f \n", marginal*constant);
 		if (marginal >0 )
-			return (long) (marginal*1.1) ;
-		else if ( marginal == 0) {
-			return (long) 100;
-		}
-		else
-			return (long) (0.8 * marginal);
+			return (long) (marginal*constant);
+		else 
+			return  (long) (marginal*(1/constant));
+		
 	}
 
 	@Override
@@ -168,34 +169,11 @@ public class AuctionTemplate implements AuctionBehavior {
 		//probability of finding such tasks
 		for (int i =0; i<graphPlan.size() -1 ; i++) {
 			for (int j=i+1; j<graphPlan.size(); j++) {
-				prob += this.distribution.probability(graphPlan.get(i), graphPlan.get(j));
+				if (!graphPlan.get(i).equals(graphPlan.get(j)) && !graphPlan.get(j).equals(graphPlan.get(j-1))) prob += this.distribution.probability(graphPlan.get(i), graphPlan.get(j));
 			}
 		}
 		//normalization factor (uniform distrobution among cities)
 		return prob/this.topology.cities().size();
-	}
-
-	private Plan naivePlan(Vehicle vehicle, TaskSet tasks) {
-		City current = vehicle.getCurrentCity();
-		Plan plan = new Plan(current);
-
-		for (Task task : tasks) {
-			// move: current city => pickup location
-			for (City city : current.pathTo(task.pickupCity))
-				plan.appendMove(city);
-
-			plan.appendPickup(task);
-
-			// move: pickup location => delivery location
-			for (City city : task.path())
-				plan.appendMove(city);
-
-			plan.appendDelivery(task);
-
-			// set current city
-			current = task.deliveryCity;
-		}
-		return plan;
 	}
 
 }
