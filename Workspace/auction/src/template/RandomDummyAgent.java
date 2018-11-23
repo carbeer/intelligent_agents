@@ -68,6 +68,7 @@ public class RandomDummyAgent implements AuctionBehavior {
 		double bid = ratio * marginalCost;
 
 		return (long) Math.round(bid);
+		
 	}
 
 	@Override

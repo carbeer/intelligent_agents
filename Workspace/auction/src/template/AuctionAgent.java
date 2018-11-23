@@ -137,14 +137,14 @@ public class AuctionAgent implements AuctionBehavior {
 		System.out.printf("Bid is is %f \n", marginal*constant);
 
 
-		/* OPT 1
+		/*OPT 1
 		if (marginal > 0)
 			return (long) (marginal*constant);
 		else
-			return  (long) (marginal*(1/constant));
-		*/
-
-		/* OPT 2
+			return  (long) (100);
+		
+*/
+		// OPT 2
 		marginal = getRealMarginalCosts(marginal);
 		double bid = Math.max(marginal * Configuration.BID_COST_SHARE_AGENT, Configuration.MIN_BID);
 
@@ -154,9 +154,9 @@ public class AuctionAgent implements AuctionBehavior {
 		}
 
 		return (long) bid;
-		*/
+		
 
-		return null;
+		//return null;
 	}
 
 	@Override
@@ -205,7 +205,8 @@ public class AuctionAgent implements AuctionBehavior {
 		//probability of finding such tasks
 		for (int i =0; i<graphPlan.size() -1 ; i++) {
 			for (int j=i+1; j<graphPlan.size(); j++) {
-				if (!graphPlan.get(i).equals(graphPlan.get(j)) && !graphPlan.get(j).equals(graphPlan.get(j-1))) prob += this.distribution.probability(graphPlan.get(i), graphPlan.get(j));
+				if (i== 0) prob += this.distribution.probability(graphPlan.get(i), graphPlan.get(j));
+				else if ( !graphPlan.get(i).equals(graphPlan.get(i-1)) & !graphPlan.get(i).equals(graphPlan.get(j)) && !graphPlan.get(j).equals(graphPlan.get(j-1))) prob += this.distribution.probability(graphPlan.get(i), graphPlan.get(j));
 			}
 		}
 		//normalization factor (uniform distrobution among cities)
