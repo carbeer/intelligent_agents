@@ -13,8 +13,8 @@ public class Configuration {
     public static final OPPONENT_STRATEGY ESTIMATION = OPPONENT_STRATEGY.MIXED;
 
     // MixedStrategyAgent
-    public static final double INIT_LEARNING_RATE = 0.3;
-    public static final double LAZINESS = 0.75;
+    public static final double INIT_LEARNING_RATE = 0.6;
+    public static final double LAZINESS = 0.9;
 
     // MovingAverageOpponent
     public static final int AVG_WINDOW = 5;

@@ -22,7 +22,7 @@
 
 	<agent name="constant-dummy-agent">
 		<set class-path="bin/"/>
-		<set class-name="template.DummyAgents.SLSDummyAgent"/>
+		<set class-name="template.DummyAgents.ConstantDummyAgent"/>
 	</agent>
 
 

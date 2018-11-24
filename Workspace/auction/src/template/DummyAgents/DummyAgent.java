@@ -28,7 +28,6 @@ public abstract class DummyAgent implements AuctionBehavior {
     public long setupTimeout;
     public long bidTimeout;
 
-
     @Override
     public void setup(Topology topology, TaskDistribution distribution,
                       Agent agent) {

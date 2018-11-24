@@ -70,25 +70,26 @@ class MixedStrategyOpponent extends Opponent {
             opp.auctionFeedback(previous, realBid, won);
             totalError += opp.getLastError();
         }
+        if (totalError > 0) {
+            int numOpponents = opponents.size();
 
-        int numOpponents = opponents.size();
-
-        // Update weights according to corresponding error
-        for (Opponent opp : opponents) {
-            double newWeight = weight.get(opp) - eta * (1.0 / numOpponents) * (opp.getLastError() / totalError - 1.0 / numOpponents);
-            if (newWeight <= 0) {
-                ArrayList<Opponent> tmp = new ArrayList<>();
-                for (Opponent opp2 : opponents) {
-                    if (opp2 != opp) {
-                        tmp.add(opp2);
+            // Update weights according to corresponding error
+            for (Opponent opp : opponents) {
+                double newWeight = weight.get(opp) - eta * (1.0 / numOpponents) * (opp.getLastError() / totalError - 1.0 / numOpponents);
+                if (newWeight <= 0) {
+                    ArrayList<Opponent> tmp = new ArrayList<>();
+                    for (Opponent opp2 : opponents) {
+                        if (opp2 != opp) {
+                            tmp.add(opp2);
+                        }
                     }
+                    this.opponents = tmp;
+                    System.out.println("Dropping model: " + opp.getClass());
                 }
-                this.opponents = tmp;
-                System.out.println("Dropping model: " + opp.getClass());
-            }
-            else {
-                System.out.printf("Updating weight of %s from %f to %f\n", opp.getClass(), weight.get(opp), newWeight);
-                weight.put(opp, newWeight);
+                else {
+                    System.out.printf("Updating weight of %s from %f to %f\n", opp.getClass(), weight.get(opp), newWeight);
+                    weight.put(opp, newWeight);
+                }
             }
         }
         eta = eta * LAZINESS;
@@ -148,11 +149,17 @@ class MovingAverageOpponent extends Opponent {
     long lastRealBid = 0;
     long lastAverage = 0;
 
+
+
     // Used to build the exponential moving average
     static final double expFactor = 2.0 / (1 + AVG_WINDOW);
 
     @Override
     public long estimateBid(Task t, long timeout) {
+        // For the second round
+        if (this.lastAverage == 0 && this.lastRealBid != 0) {
+            this.lastAverage = this.lastRealBid;
+        }
         this.lastAverage = (long) (expFactor * lastRealBid  + (1-expFactor) * lastAverage);
         return this.lastAverage;
     }
@@ -176,7 +183,7 @@ class MovingMedianOpponent extends Opponent {
 
     @Override
     public long estimateBid(Task t, long timeout) {
-        double[] window = Arrays.stream(realBids.toArray(new Double[0])).filter(Objects::nonNull).mapToDouble(Double::longValue).toArray();
+        double[] window = Arrays.stream(realBids.toArray(new Long[0])).mapToDouble(num -> (double) num).toArray();
         this.lastMedian = (long) median.evaluate(window);
         return this.lastMedian;
     }
@@ -184,7 +191,9 @@ class MovingMedianOpponent extends Opponent {
     @Override
     public void auctionFeedback(Task previous, long realBid, boolean won) {
         this.realBids.add(realBid);
-        this.realBids.remove();
+        if (realBids.size() > medianWindow) {
+            this.realBids.remove();
+        }
         errors.add(Math.abs(lastMedian-realBid));
     }
 }
