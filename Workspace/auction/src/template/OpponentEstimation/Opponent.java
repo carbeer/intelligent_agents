@@ -77,6 +77,7 @@ class MixedStrategyOpponent extends Opponent {
             for (Opponent opp : opponents) {
                 double newWeight = weight.get(opp) - eta * (1.0 / numOpponents) * (opp.getLastError() / totalError - 1.0 / numOpponents);
                 if (newWeight <= 0) {
+                    // Workaround to avoid ConcurrentModificationException by the Logist platform
                     ArrayList<Opponent> tmp = new ArrayList<>();
                     for (Opponent opp2 : opponents) {
                         if (opp2 != opp) {
@@ -222,7 +223,7 @@ class SLSOpponent extends Opponent {
         long estimatedCost = 0;
 
         for (SLSOpponentInstance estimator : estimators) {
-            estimatedCost += estimator.estimateBid(t, timeout/instances);
+            estimatedCost += estimator.estimateBid(t, (long) ((double)timeout/instances));
         }
         return estimatedCost;
     }

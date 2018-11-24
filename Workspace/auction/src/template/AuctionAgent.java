@@ -123,13 +123,13 @@ public class AuctionAgent implements AuctionBehavior {
 		if (feasible == false) return null;
 
 		this.myTasksT.add(task);
-		this.potentialPlan = new SLS(agent.vehicles(), this.myTasksT, this.bidTimeout / 2);
+		this.potentialPlan = new SLS(agent.vehicles(), this.myTasksT, (long) (this.bidTimeout / 2.0));
 
 		double marginal = this.potentialPlan.bestSolution.computeCost() - this.currentPlan.bestSolution.computeCost();
 		marginal = getRealMarginalCosts(marginal);
 		System.out.printf("Marginal costs for the task: %f\n", marginal);
 
-		long oppEstimation = opponent.estimateBid(task, this.bidTimeout / 2);
+		long oppEstimation = opponent.estimateBid(task, (long) (this.bidTimeout / 2.0));
 
 		//Probability of having zero marginal with new new plan
 		double p = zeroMarginalProb(this.potentialPlan.bestSolution);
