@@ -86,7 +86,7 @@ public class AuctionAgent implements AuctionBehavior {
         System.out.printf("Got the following settings during setup:\n setupTimeout: %d sec\n planTimeout: " +
 				"%d sec\n bidTimeout: %d sec\n", this.setupTimeout, this.planTimeout, bidTimeout);
 
-        this.calculateBoundary(this.upperMCBound);
+        this.upperMCBound = this.calculateBoundary();
         this.opponent = new OpponentWrapper(topology, agent.vehicles());
 	}
 
@@ -147,6 +147,7 @@ public class AuctionAgent implements AuctionBehavior {
 		// OPT 2
 		marginal = getRealMarginalCosts(marginal);
 		double bid = Math.max(marginal * Configuration.BID_COST_SHARE_AGENT, Configuration.MIN_BID);
+		System.out.println("The final bid of the agent is " + bid);
 
 		// If its smaller than marginal costs, it's not worth decreasing the bid that drastically.
 		if (oppEstimation > marginal) {
@@ -213,7 +214,7 @@ public class AuctionAgent implements AuctionBehavior {
 		return prob/this.topology.cities().size();
 	}
 
-	private void calculateBoundary(double upperBound) {
+	private double calculateBoundary() {
 		double maxDistance = 0;
 		for (City c : topology.cities()) {
 			for (City d : topology.cities()) {
@@ -222,8 +223,18 @@ public class AuctionAgent implements AuctionBehavior {
 				}
 			}
 		}
+
+		int costPerKm = 0;
+
+		// Get max. cost per km
+		for (Vehicle v : agent.vehicles()) {
+			if (v.costPerKm() > costPerKm) {
+				costPerKm = v.costPerKm();
+			}
+		}
+
 		// Costs for driving to the the furthest city and delivering in the furthest city
-		upperBound = 2 * maxDistance * vehicle.costPerKm();
+		return 2 * maxDistance * costPerKm;
 	}
 
 	public static long getRealMarginalCosts(double marginal) {

@@ -56,7 +56,9 @@ class MixedStrategyOpponent extends Opponent {
             long oppBid = opp.estimateBid(t, (long) (timeout / (double) opponents.size()));
             this.lastBid += weight.get(opp) * oppBid;
             this.lastEstimatorBid.put(opp, oppBid);
+            System.out.println(opp.getClass() + ": Suggested a bid of " + oppBid);
         }
+        System.out.println("Final estimation: " + this.lastBid);
         return this.lastBid;
     }
 
