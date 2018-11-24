@@ -36,7 +36,7 @@ public class OpponentWrapper extends Opponent {
     }
 
     @Override
-    public long estimateBid(Task t, long timeout) {
+    public long estimateBid(Task t, float timeout) {
         return opp.estimateBid(t, timeout);
     }
 

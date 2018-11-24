@@ -37,9 +37,9 @@ public class AuctionAgent implements AuctionBehavior {
 	private Vehicle vehicle;
 	private City currentCity;
 
-	public long planTimeout;
-	public long setupTimeout;
-	public long bidTimeout;
+	public float planTimeout;
+	public float setupTimeout;
+	public float bidTimeout;
 	private double initDiscout;
 	public ArrayList<Task> myTasks;
 	public ArrayList<Task> myTasksT;
@@ -83,8 +83,8 @@ public class AuctionAgent implements AuctionBehavior {
         this.bidTimeout = ls.get(LogistSettings.TimeoutKey.BID);
 		this.planTimeout = ls.get(LogistSettings.TimeoutKey.PLAN);
 
-        System.out.printf("Got the following settings during setup:\n setupTimeout: %d sec\n planTimeout: " +
-				"%d sec\n bidTimeout: %d sec\n", this.setupTimeout, this.planTimeout, bidTimeout);
+        System.out.printf("Got the following settings during setup:\n setupTimeout: %f sec\n planTimeout: " +
+				"%f sec\n bidTimeout: %f sec\n", this.setupTimeout, this.planTimeout, bidTimeout);
 
         this.upperMCBound = this.calculateBoundary();
         this.opponent = new OpponentWrapper(topology, agent.vehicles());
@@ -111,6 +111,7 @@ public class AuctionAgent implements AuctionBehavior {
 	
 	@Override
 	public Long askPrice(Task task) {
+		long start = System.currentTimeMillis();
 		// Check whether at least one vehicle can take this task
 		boolean feasible = false;
 		for (Vehicle v : this.agent.vehicles()) {
@@ -123,14 +124,16 @@ public class AuctionAgent implements AuctionBehavior {
 		if (feasible == false) return null;
 
 		this.myTasksT.add(task);
+		
 		this.potentialPlan = new SLS(agent.vehicles(), this.myTasksT, (long) (this.bidTimeout / 2.0));
-
+		
 		double marginal = this.potentialPlan.bestSolution.computeCost() - this.currentPlan.bestSolution.computeCost();
 		marginal = getRealMarginalCosts(marginal);
 		System.out.printf("Marginal costs for the task: %f\n", marginal);
-
-		long oppEstimation = opponent.estimateBid(task, (long) (this.bidTimeout / 2.0));
-
+        
+		long start1 = System.currentTimeMillis();
+		long oppEstimation = opponent.estimateBid(task, (float) (this.bidTimeout / 2.0));
+		System.out.println("Time for the opponents estimation timeout " + (System.currentTimeMillis() - start1));
 		//Probability of having zero marginal with new new plan
 		double p = zeroMarginalProb(this.potentialPlan.bestSolution);
 		
@@ -157,6 +160,7 @@ public class AuctionAgent implements AuctionBehavior {
 			bid = (long) (marginal * (constant));
 		}
 		this.round +=1;
+		System.out.printf("Time for strategy: %d    Bidding timeout %f \n", System.currentTimeMillis()-start, this.bidTimeout );
 		return (long) bid;
 		
 		

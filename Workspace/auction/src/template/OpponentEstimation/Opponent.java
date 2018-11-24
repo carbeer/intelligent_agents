@@ -19,7 +19,7 @@ import static template.Configuration.*;
 public abstract class Opponent {
     ArrayList<Long> errors = new ArrayList<>();
 
-    public abstract long estimateBid(Task t, long timeout);
+    public abstract long estimateBid(Task t, float timeout);
 	public abstract void auctionFeedback(Task previous, long realBid, boolean won);
 
 	public double getCurrentAvgError() {
@@ -50,10 +50,10 @@ class MixedStrategyOpponent extends Opponent {
     }
 
     @Override
-    public long estimateBid(Task t, long timeout) {
+    public long estimateBid(Task t, float timeout) {
         this.lastBid = 0;
         for (Opponent opp : opponents) {
-            long oppBid = opp.estimateBid(t, (long) (timeout / (double) opponents.size()));
+            long oppBid = opp.estimateBid(t, (float) (timeout / (double) opponents.size()));
             this.lastBid += weight.get(opp) * oppBid;
             this.lastEstimatorBid.put(opp, oppBid);
             System.out.println(opp.getClass() + ": Suggested a bid of " + oppBid);
@@ -131,7 +131,7 @@ class LinearRegressionOpponent extends Opponent {
     }
 
     @Override
-    public long estimateBid(Task t, long timeout) {
+    public long estimateBid(Task t, float timeout) {
         return (long) (beta0 + beta1 * (realBids.size()+1));
     }
 
@@ -156,7 +156,7 @@ class MovingAverageOpponent extends Opponent {
     static final double expFactor = 2.0 / (1 + AVG_WINDOW);
 
     @Override
-    public long estimateBid(Task t, long timeout) {
+    public long estimateBid(Task t, float timeout) {
         // For the second round
         if (this.lastAverage == 0 && this.lastRealBid != 0) {
             this.lastAverage = this.lastRealBid;
@@ -183,7 +183,7 @@ class MovingMedianOpponent extends Opponent {
     Median median = new Median();
 
     @Override
-    public long estimateBid(Task t, long timeout) {
+    public long estimateBid(Task t, float timeout) {
         double[] window = Arrays.stream(realBids.toArray(new Long[0])).mapToDouble(num -> (double) num).toArray();
         this.lastMedian = (long) median.evaluate(window);
         return this.lastMedian;
@@ -219,11 +219,11 @@ class SLSOpponent extends Opponent {
     }
 
     @Override
-    public long estimateBid(Task t, long timeout) {
+    public long estimateBid(Task t, float timeout) {
         long estimatedCost = 0;
 
         for (SLSOpponentInstance estimator : estimators) {
-            estimatedCost += estimator.estimateBid(t, (long) ((double)timeout/instances));
+            estimatedCost += estimator.estimateBid(t, (float) ((double)timeout/instances));
         }
         return estimatedCost;
     }
@@ -285,7 +285,7 @@ class SLSOpponentInstance implements Comparable<SLSOpponentInstance> {
         this.lastEstimator = new SLS(dummyVehicles, taskList, 0);
     }
 
-    public long estimateBid(Task t, long timeout) {
+    public long estimateBid(Task t, float timeout) {
         this.taskList.add(t);
         potentialEstimator = new SLS(dummyVehicles, taskList, timeout);
         double tmp = potentialEstimator.bestSolution.computeCost() - lastEstimator.bestSolution.computeCost();
