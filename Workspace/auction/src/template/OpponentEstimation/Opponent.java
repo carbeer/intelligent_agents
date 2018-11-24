@@ -28,6 +28,9 @@ public abstract class Opponent {
 	public double getLastError() { return errors.get(errors.size()-1); }
 }
 
+/**
+ * Uses different Opponents and combines them to compute a bid
+ */
 class MixedStrategyOpponent extends Opponent {
     ArrayList<Opponent> opponents = new ArrayList<>();
     HashMap<Opponent, Double> weight = new HashMap<Opponent, Double>();
@@ -91,6 +94,9 @@ class MixedStrategyOpponent extends Opponent {
     }
 }
 
+/**
+ * Utilizes linear regression to calculate bids
+ */
 class LinearRegressionOpponent extends Opponent {
     double beta0 = 0;
     double beta1 = 0;
@@ -133,6 +139,9 @@ class LinearRegressionOpponent extends Opponent {
     }
 }
 
+/**
+ * Calculates the moving average over a timespan of AVG_WINDOW
+ */
 class MovingAverageOpponent extends Opponent {
     long lastRealBid = 0;
     long lastAverage = 0;
@@ -153,6 +162,9 @@ class MovingAverageOpponent extends Opponent {
     }
 }
 
+/**
+ * Calculates the moving median over a timespan of MEDIAN_WINDOW
+ */
 class MovingMedianOpponent extends Opponent {
     Queue<Long> realBids = new ArrayDeque<>();
     long lastMedian = 0;
@@ -236,7 +248,9 @@ class SLSOpponent extends Opponent {
     }
 }
 
-
+/**
+ * Represents a single SLSOpponent instance that is used within the SLSOpponent
+ */
 class SLSOpponentInstance implements Comparable<SLSOpponentInstance> {
     SLS lastEstimator;
     SLS potentialEstimator;

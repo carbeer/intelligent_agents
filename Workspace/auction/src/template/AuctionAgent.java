@@ -48,7 +48,7 @@ public class AuctionAgent implements AuctionBehavior {
 
 	public Opponent opponent;
 
-	public double upperMCBound;
+	public static double upperMCBound;
 
 	/*
 	TODO:
@@ -86,7 +86,7 @@ public class AuctionAgent implements AuctionBehavior {
         System.out.printf("Got the following settings during setup:\n setupTimeout: %d sec\n planTimeout: " +
 				"%d sec\n bidTimeout: %d sec\n", this.setupTimeout, this.planTimeout, bidTimeout);
 
-        this.calculateBoundary();
+        this.calculateBoundary(this.upperMCBound);
         this.opponent = new OpponentWrapper(topology, agent.vehicles());
 	}
 
@@ -213,7 +213,7 @@ public class AuctionAgent implements AuctionBehavior {
 		return prob/this.topology.cities().size();
 	}
 
-	private void calculateBoundary() {
+	private void calculateBoundary(double upperBound) {
 		double maxDistance = 0;
 		for (City c : topology.cities()) {
 			for (City d : topology.cities()) {
@@ -223,13 +223,13 @@ public class AuctionAgent implements AuctionBehavior {
 			}
 		}
 		// Costs for driving to the the furthest city and delivering in the furthest city
-		this.upperMCBound = 2 * maxDistance * vehicle.costPerKm();
+		upperBound = 2 * maxDistance * vehicle.costPerKm();
 	}
 
-	private long getRealMarginalCosts(double marginal) {
+	public static long getRealMarginalCosts(double marginal) {
 		System.out.println("Max of 0, marginal: " + Math.max(0, marginal));
-		System.out.println("Min of upper bound, previous: " + Math.min(Math.max(0, marginal), this.upperMCBound));
+		System.out.println("Min of upper bound, previous: " + Math.min(Math.max(0, marginal), upperMCBound));
 		// Minimum 0, Maximum upperMCBound
-		return (long) Math.min(Math.max(0, marginal), this.upperMCBound);
+		return (long) Math.min(Math.max(0, marginal), upperMCBound);
 	}
 }

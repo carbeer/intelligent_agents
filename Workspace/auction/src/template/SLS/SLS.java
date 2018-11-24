@@ -393,8 +393,4 @@ public class SLS {
 		}
 		return plans;
 	}
-
-	public Solution getSolution () {
-		return this.bestSolution.clone();
-	}
 }
