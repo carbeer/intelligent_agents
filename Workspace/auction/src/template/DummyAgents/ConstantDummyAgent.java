@@ -14,7 +14,7 @@ public class ConstantDummyAgent extends DummyAgent{
 
     @Override
     public Long askPrice(Task task) {
-        return (long) 1000;
+        return (long) 1500;
     }
 
 }

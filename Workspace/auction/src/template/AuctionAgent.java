@@ -40,12 +40,12 @@ public class AuctionAgent implements AuctionBehavior {
 	public long planTimeout;
 	public long setupTimeout;
 	public long bidTimeout;
-
+	private double initDiscout;
 	public ArrayList<Task> myTasks;
 	public ArrayList<Task> myTasksT;
 	public SLS currentPlan;
 	public SLS potentialPlan;
-
+	private int round;
 	public Opponent opponent;
 
 	public static double upperMCBound;
@@ -62,7 +62,7 @@ public class AuctionAgent implements AuctionBehavior {
 		this.topology = topology;
 		this.distribution = distribution;
 		this.agent = agent;
-
+		this.initDiscout = 0.6;
 		this.vehicle = agent.vehicles().get(0);
 		this.currentCity = vehicle.homeCity();
 		long seed = -9019554669489983951L * currentCity.hashCode() * agent.id();
@@ -70,7 +70,7 @@ public class AuctionAgent implements AuctionBehavior {
 		this.myTasks = new ArrayList<Task>();
 		this.myTasksT = new ArrayList<Task>();
 		this.currentPlan = new SLS(agent.vehicles(), new ArrayList<Task>(), (double)0);
-
+		this.round = 1;
 		LogistSettings ls = null;
         try {
             ls = Parsers.parseSettings("config/settings_auction.xml");
@@ -126,37 +126,40 @@ public class AuctionAgent implements AuctionBehavior {
 		this.potentialPlan = new SLS(agent.vehicles(), this.myTasksT, this.bidTimeout / 2);
 
 		double marginal = this.potentialPlan.bestSolution.computeCost() - this.currentPlan.bestSolution.computeCost();
+		marginal = getRealMarginalCosts(marginal);
 		System.out.printf("Marginal costs for the task: %f\n", marginal);
 
 		long oppEstimation = opponent.estimateBid(task, this.bidTimeout / 2);
 
 		//Probability of having zero marginal with new new plan
 		double p = zeroMarginalProb(this.potentialPlan.bestSolution);
-		double constant  =  1.8 - p;
-		System.out.printf("Probability is %f \n", p);
-		System.out.printf("Bid is is %f \n", marginal*constant);
-
-
-		/*OPT 1
-		if (marginal > 0)
-			return (long) (marginal*constant);
-		else
-			return  (long) (100);
 		
-*/
-		// OPT 2
-		marginal = getRealMarginalCosts(marginal);
-		double bid = Math.max(marginal * Configuration.BID_COST_SHARE_AGENT, Configuration.MIN_BID);
+		System.out.printf("Probability is %f \n", p);
+		
+		
+		//double bid = Math.max(marginal * Configuration.BID_COST_SHARE_AGENT, Configuration.MIN_BID);
+		double bid = marginal;
 		System.out.println("The final bid of the agent is " + bid);
-
+		
+		double constant = 1.1;
+		// BIDDING
+		if (this.round < 5) {
+			bid = task.pickupCity.distanceTo(task.deliveryCity) * this.vehicle.costPerKm();
+			bid *= this.initDiscout;
+			this.initDiscout += 0.1;
+		}
 		// If its smaller than marginal costs, it's not worth decreasing the bid that drastically.
-		if (oppEstimation > marginal) {
+		else if (oppEstimation > marginal) {
 			bid = bid + Configuration.OPPONENT_WEIGHT * (oppEstimation - bid);
 		}
-
+		else {
+			if (this.myTasks.size() < 5) constant = 1.2 - p;
+			bid = (long) (marginal * (constant));
+		}
+		this.round +=1;
 		return (long) bid;
 		
-
+		
 		//return null;
 	}
 
