@@ -28,12 +28,9 @@ public class SLSDummyAgent extends DummyAgent {
     private Vehicle vehicle;
     private Topology.City currentCity;
 
-    public long planTimeout;
-    public long setupTimeout;
-    public long bidTimeout;
 
-    public ArrayList<Task> myTasks;
-    public ArrayList<Task> myTasksT;
+    public ArrayList<Task> myTasks = new ArrayList<>();
+    public ArrayList<Task> myTasksT = new ArrayList<>();
     public SLS currentPlan;
     public SLS potentialPlan;
 
@@ -46,9 +43,8 @@ public class SLSDummyAgent extends DummyAgent {
         this.currentCity = vehicle.homeCity();
         long seed = -9019554669489983951L * currentCity.hashCode() * agent.id();
         this.random = new Random(seed);
-        this.myTasks = new ArrayList<Task>();
-        this.myTasksT = new ArrayList<Task>();
-        this.currentPlan = new SLS(agent.vehicles(), new ArrayList<Task>(), (double)0);
+        this.topology = topology;
+        this.distribution = distribution;
 
         LogistSettings ls = null;
         try {
@@ -57,10 +53,8 @@ public class SLSDummyAgent extends DummyAgent {
         catch (Exception exc) {
             System.out.println("There was a problem loading the configuration file.");
         }
-
-        this.setupTimeout = ls.get(LogistSettings.TimeoutKey.SETUP);
-        this.bidTimeout = ls.get(LogistSettings.TimeoutKey.BID);
-        this.planTimeout = ls.get(LogistSettings.TimeoutKey.PLAN);
+        super.setup(topology, distribution, agent);
+        this.currentPlan = new SLS(agent.vehicles(), myTasks, bidTimeout);
     }
 
     @Override

@@ -37,9 +37,9 @@ public class AuctionAgent implements AuctionBehavior {
 	private Vehicle vehicle;
 	private City currentCity;
 
-	public float planTimeout;
-	public float setupTimeout;
-	public float bidTimeout;
+	public static float planTimeout;
+	public static float setupTimeout;
+	public static float bidTimeout;
 	private double initDiscout;
 	public ArrayList<Task> myTasks;
 	public ArrayList<Task> myTasksT;
@@ -133,11 +133,8 @@ public class AuctionAgent implements AuctionBehavior {
         
 		long start1 = System.currentTimeMillis();
 		long oppEstimation = opponent.estimateBid(task, (float) (this.bidTimeout / 2.0));
-		System.out.println("Time for the opponents estimation timeout " + (System.currentTimeMillis() - start1));
 		//Probability of having zero marginal with new new plan
 		double p = zeroMarginalProb(this.potentialPlan.bestSolution);
-		
-		System.out.printf("Probability is %f \n", p);
 		
 		
 		//double bid = Math.max(marginal * Configuration.BID_COST_SHARE_AGENT, Configuration.MIN_BID);
@@ -160,7 +157,6 @@ public class AuctionAgent implements AuctionBehavior {
 			bid = (long) (marginal * (constant));
 		}
 		this.round +=1;
-		System.out.printf("Time for strategy: %d    Bidding timeout %f \n", System.currentTimeMillis()-start, this.bidTimeout );
 		return (long) bid;
 		
 		
@@ -245,8 +241,6 @@ public class AuctionAgent implements AuctionBehavior {
 	}
 
 	public static long getRealMarginalCosts(double marginal) {
-		System.out.println("Max of 0, marginal: " + Math.max(0, marginal));
-		System.out.println("Min of upper bound, previous: " + Math.min(Math.max(0, marginal), upperMCBound));
 		// Minimum 0, Maximum upperMCBound
 		return (long) Math.min(Math.max(0, marginal), upperMCBound);
 	}

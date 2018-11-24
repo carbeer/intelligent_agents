@@ -10,6 +10,7 @@ import logist.task.Task;
 import logist.task.TaskDistribution;
 import logist.task.TaskSet;
 import logist.topology.Topology;
+import template.AuctionAgent;
 import template.SLS.SLS;
 
 import java.util.ArrayList;
@@ -24,9 +25,8 @@ public abstract class DummyAgent implements AuctionBehavior {
     Vehicle vehicle;
     Topology.City currentCity;
 
-    public long planTimeout;
-    public long setupTimeout;
-    public long bidTimeout;
+    public float planTimeout;
+    public float bidTimeout;
 
     @Override
     public void setup(Topology topology, TaskDistribution distribution,
@@ -46,10 +46,8 @@ public abstract class DummyAgent implements AuctionBehavior {
         catch (Exception exc) {
             System.out.println("There was a problem loading the configuration file.");
         }
-
-        this.setupTimeout = ls.get(LogistSettings.TimeoutKey.SETUP);
-        this.bidTimeout = ls.get(LogistSettings.TimeoutKey.BID);
-        this.planTimeout = ls.get(LogistSettings.TimeoutKey.PLAN);
+        this.bidTimeout = AuctionAgent.bidTimeout;
+        this.planTimeout = AuctionAgent.planTimeout;
     }
 
     @Override
@@ -60,8 +58,12 @@ public abstract class DummyAgent implements AuctionBehavior {
             taskList.add(t);
             reward += t.reward;
         }
+        System.out.println("Timeout: " + this.planTimeout);
+        System.out.println("Reward: " + reward);
+        long start = System.currentTimeMillis();
         SLS sls = new SLS(vehicles, taskList, this.planTimeout);
         List<Plan> plans = sls.computePlans();
+        System.out.println("Time: " + (System.currentTimeMillis() - start));
 
         double profit = reward - sls.bestSolution.computeCost();
         System.out.println(this.getClass() + ": Made a profit of " + profit);

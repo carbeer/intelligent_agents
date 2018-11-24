@@ -98,7 +98,7 @@ public class SLS {
 		}
 	}
 
-	private void setTimeouts(double timeout) {
+	public void setTimeouts(double timeout) {
 		END_STAGE1 = System.currentTimeMillis() + timeout * 0.3;
 		END_STAGE2 = System.currentTimeMillis() + timeout * 0.6;
 		END_STAGE3 = System.currentTimeMillis() + timeout * 0.9;

@@ -53,7 +53,7 @@ class MixedStrategyOpponent extends Opponent {
     public long estimateBid(Task t, float timeout) {
         this.lastBid = 0;
         for (Opponent opp : opponents) {
-            long oppBid = opp.estimateBid(t, (float) (timeout / (double) opponents.size()));
+            long oppBid = opp.estimateBid(t, (float) (timeout * 4 / 5));
             this.lastBid += weight.get(opp) * oppBid;
             this.lastEstimatorBid.put(opp, oppBid);
             System.out.println(opp.getClass() + ": Suggested a bid of " + oppBid);
@@ -137,7 +137,7 @@ class LinearRegressionOpponent extends Opponent {
 
     @Override
     public void auctionFeedback(Task previous, long realBid, boolean won) {
-        this.errors.add((long) Math.abs(beta0 + beta1 * (realBids.size()+1)) - realBid);
+        this.errors.add((long) Math.abs(estimateBid(null, 0) - realBid));
         this.realBids.add(realBid);
         this.fit();
     }
@@ -206,6 +206,8 @@ class MovingMedianOpponent extends Opponent {
 class SLSOpponent extends Opponent {
     private List<SLSOpponentInstance> estimators = new ArrayList<>();
     static Random rand = new Random();
+    SLSOpponentInstance best;
+    long lastBid = 0;
     int instances = Configuration.INSTANCES;
 
     public SLSOpponent(Topology topology, List<Vehicle> vehicles) {
@@ -214,38 +216,49 @@ class SLSOpponent extends Opponent {
             overallCapacity += v.capacity();
         }
         for (int i=0; i<instances; i++) {
-            estimators.add(new SLSOpponentInstance(topology, vehicles.get(0).costPerKm(), overallCapacity, 1.0/instances));
+            estimators.add(new SLSOpponentInstance(topology, vehicles.get(0).costPerKm(), overallCapacity));
         }
     }
 
     @Override
     public long estimateBid(Task t, float timeout) {
         long estimatedCost = 0;
+        long bid = -1;
 
         for (SLSOpponentInstance estimator : estimators) {
-            estimatedCost += estimator.estimateBid(t, (float) ((double)timeout/instances));
+            long tmp = estimator.estimateBid(t, (float) ((double)timeout/instances));;
+            estimatedCost += tmp * 1.0/instances;
+            if (best != null && best == estimator) {
+                bid = tmp;
+            }
         }
+        if (bid != -1) {
+            lastBid = bid;
+            return bid;
+        }
+        lastBid = estimatedCost;
         return estimatedCost;
     }
 
     @Override
     public void auctionFeedback(Task previous, long realBid, boolean won) {
-        int err = 0;
         SLSOpponentInstance.setRealBid(realBid);
         if (won) {
             for (SLSOpponentInstance opp : estimators) {
-                err += opp.getAbsError();
                 opp.lastEstimator = opp.potentialEstimator;
                 opp.potentialEstimator = null;
             }
         } else {
             for (SLSOpponentInstance opp : estimators) {
-                err += opp.getAbsError();
-                opp.taskList.remove(previous);
+                for (Task t : opp.taskList) {
+                    if (previous.id == t.id) {
+                        opp.taskList.remove(t);
+                        break;
+                    }
+                }
             }
         }
-        double avgErr = (double) err / instances;
-        errors.add((long) avgErr);
+        errors.add((long) Math.abs(lastBid - realBid));
         cullOpponentModels();
     }
 
@@ -253,10 +266,7 @@ class SLSOpponent extends Opponent {
         Collections.sort(this.estimators);
         instances -= instances / 2;
         this.estimators = this.estimators.subList(0, instances);
-
-        for (SLSOpponentInstance opp : estimators) {
-            opp.setWeight(1.0 / instances);
-        }
+        this.best = this.estimators.get(0);
     }
 }
 
@@ -269,15 +279,13 @@ class SLSOpponentInstance implements Comparable<SLSOpponentInstance> {
     ArrayList<Vehicle> dummyVehicles;
     long lastBid;
     Random rand;
-    double weight;
     static long realBid;
     ArrayList<Task> taskList = new ArrayList<>();
 
-    public SLSOpponentInstance(Topology topology, int costPerKm, int overallCapacity, double weight) {
+    public SLSOpponentInstance(Topology topology, int costPerKm, int overallCapacity) {
         dummyVehicles = new ArrayList<>();
         this.rand = SLSOpponent.rand;
         double len = Configuration.MIN_VEHICLES + rand.nextInt(Configuration.MAX_VEHICLES- Configuration.MIN_VEHICLES);
-        this.weight = weight;
 
         for (int j=0; j<len; j++) {
             dummyVehicles.add(new DummyVehicle(costPerKm, topology.randomCity(rand), (int) (overallCapacity / len)));
@@ -286,16 +294,14 @@ class SLSOpponentInstance implements Comparable<SLSOpponentInstance> {
     }
 
     public long estimateBid(Task t, float timeout) {
+        long now = System.currentTimeMillis();
         this.taskList.add(t);
+        lastEstimator.setTimeouts(timeout);
         potentialEstimator = new SLS(dummyVehicles, taskList, timeout);
         double tmp = potentialEstimator.bestSolution.computeCost() - lastEstimator.bestSolution.computeCost();
         System.out.println("Cost: " + tmp);
         this.lastBid = (long) (tmp * Configuration.BID_COST_SHARE_OPP);
-        return (long) (this.lastBid * weight);
-    }
-
-    void setWeight(double weight) {
-        this.weight = weight;
+        return (long) (this.lastBid);
     }
 
     public Long getAbsError() {

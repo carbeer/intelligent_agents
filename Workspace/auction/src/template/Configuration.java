@@ -26,7 +26,7 @@ public class Configuration {
     public static final double BID_COST_SHARE_OPP = 1.2;
     public static final int MIN_VEHICLES = 2;
     public static final int MAX_VEHICLES = 5;
-    public static int INSTANCES = 20;
+    public static int INSTANCES = 10;
 
     // SLS
     public static final INIT_SOLUTION INIT_STRATEGY = INIT_SOLUTION.EACH_TO_CLOSEST;
