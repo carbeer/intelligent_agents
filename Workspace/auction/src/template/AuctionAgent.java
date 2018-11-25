@@ -62,7 +62,7 @@ public class AuctionAgent implements AuctionBehavior {
 		this.topology = topology;
 		this.distribution = distribution;
 		this.agent = agent;
-		this.initDiscout = 0.6;
+		this.initDiscout = 0.7;
 		this.vehicle = agent.vehicles().get(0);
 		this.currentCity = vehicle.homeCity();
 		long seed = -9019554669489983951L * currentCity.hashCode() * agent.id();
@@ -112,6 +112,7 @@ public class AuctionAgent implements AuctionBehavior {
 	@Override
 	public Long askPrice(Task task) {
 		long start = System.currentTimeMillis();
+		Random random = new Random();
 		// Check whether at least one vehicle can take this task
 		boolean feasible = false;
 		for (Vehicle v : this.agent.vehicles()) {
@@ -150,7 +151,7 @@ public class AuctionAgent implements AuctionBehavior {
 		}
 		// If its smaller than marginal costs, it's not worth decreasing the bid that drastically.
 		else if (oppEstimation > marginal) {
-			bid = bid + Configuration.OPPONENT_WEIGHT * (oppEstimation - bid);
+			bid = bid + (0.3 + random.nextDouble() * 0.7) * (oppEstimation - bid);
 		}
 		else {
 			if (this.myTasks.size() < 5) constant = 1.2 - p;
